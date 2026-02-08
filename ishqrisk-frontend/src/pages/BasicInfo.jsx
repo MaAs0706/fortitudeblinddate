@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { supabase } from "../lib/supabase";
 import { useAuth } from "../context/AuthContext";
+import { generateNickname } from "../utils/generateNickName";
 
 const templates = [
   { id: "minimal", name: "Quiet Reveal", vibe: "Minimal · Elegant" },
@@ -9,6 +10,8 @@ const templates = [
 ];
 
 export default function BasicInfo() {
+  const nickname = generateNickname()
+  console.log(nickname)
   const { user } = useAuth();
 
   const [selectedTemplate, setSelectedTemplate] = useState("minimal");
@@ -20,6 +23,7 @@ export default function BasicInfo() {
     firstName: "",
     lastName: "",
     age: "",
+    nickname: "",
     gender: "",
     phoneno: "",
   });
@@ -30,12 +34,20 @@ export default function BasicInfo() {
 
     const parts = user.user_metadata.full_name.split(" ");
 
+    // ⭐ Auto nickname logic
+    const autoNickname =
+      parts[0]?.length > 6
+        ? parts[0].slice(0, 6)
+        : parts[0];
+
     setForm((prev) => ({
       ...prev,
       firstName: parts[0] || "",
       lastName: parts.slice(1).join(" ") || "",
+      nickname: nickname || "",   // ⭐ ADD THIS
     }));
   }, [user]);
+
 
   // ⭐ Upload + Save
   const handleContinue = async () => {
@@ -70,6 +82,7 @@ export default function BasicInfo() {
           id: user.id,
           firstName: form.firstName,
           lastName: form.lastName,
+          nickname: form.nickname,   // ⭐ ADD THIS
           age: Number(form.age),
           gender: form.gender,
           phoneno: form.phoneno,
@@ -78,6 +91,7 @@ export default function BasicInfo() {
           profile_url: profileUrl,
           onboarding_step: "preferences",
         })
+
         .select();
 
       if (error) throw error;
