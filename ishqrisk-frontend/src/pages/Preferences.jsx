@@ -1,23 +1,54 @@
 import { useState } from "react";
+import { useAuth } from "../context/AuthContext";
+import { supabase } from "../lib/supabase";
 
 export default function Preferences() {
-  const [matchType, setMatchType] = useState("");
-  const [ageRange, setAgeRange] = useState([18, 22]);
-  const [preferredGender, setPreferredGender] = useState([]);
-  const [preferredYear, setPreferredYear] = useState([]);
+  const { user } = useAuth();
 
-  const toggle = (value, setter, state) => {
-    setter(
-      state.includes(value)
-        ? state.filter((v) => v !== value)
-        : [...state, value]
+  const [openTo, setOpenTo] = useState("");
+  const [agePreference, setAgePreference] = useState("");
+  const [genderPreference, setGenderPreference] = useState(""); // ⭐ NEW
+  const [yearPreference, setYearPreference] = useState([]);
+  const [saving, setSaving] = useState(false);
+
+  const toggle = (value) => {
+    setYearPreference((prev) =>
+      prev.includes(value)
+        ? prev.filter((v) => v !== value)
+        : [...prev, value]
     );
+  };
+
+  // ⭐ SAVE TO DB
+  const handleContinue = async () => {
+    if (!user || saving) return;
+
+    setSaving(true);
+
+    try {
+      const { error } = await supabase
+        .from("users")
+        .update({
+          opento: openTo,
+          age_preference: agePreference,
+          gender_preference: genderPreference, // ⭐ ADDED
+          year_preference: yearPreference,
+          onboarding_step: "qna",
+        })
+        .eq("id", user.id);
+
+      if (error) throw error;
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (
     <div className="relative min-h-screen overflow-hidden px-6 py-24 text-white">
 
-      {/* ===== CINEMATIC BACKGROUND ===== */}
+      {/* ===== BACKGROUND ===== */}
       <div
         className="absolute inset-0 -z-10"
         style={{
@@ -26,17 +57,15 @@ export default function Preferences() {
         }}
       />
 
-      {/* Ambient glows */}
       <div className="pointer-events-none absolute inset-0 -z-10">
         <div className="absolute top-[20%] left-1/2 h-[520px] w-[520px] -translate-x-1/2 rounded-full bg-[#f3b6c0]/12 blur-[220px]" />
         <div className="absolute bottom-[20%] right-[10%] h-[380px] w-[380px] rounded-full bg-[#d8a0aa]/10 blur-[200px]" />
       </div>
 
-      {/* ===== CONTENT ===== */}
       <div className="mx-auto max-w-3xl animate-fade-in">
 
-        {/* Title */}
-        <div className="mb-20 text-center animate-slide-up delay-1">
+        {/* TITLE */}
+        <div className="mb-20 text-center">
           <h1 className="text-3xl md:text-4xl font-semibold mb-3">
             Your preferences
           </h1>
@@ -45,25 +74,22 @@ export default function Preferences() {
           </p>
         </div>
 
-        {/* Match Type */}
-        <section className="mb-24 animate-slide-up delay-2">
-          <h2 className="mb-6 text-lg font-medium">
-            What are you here for?
-          </h2>
+        {/* ===== OPEN TO ===== */}
+        <section className="mb-24">
+          <h2 className="mb-6 text-lg font-medium">What are you open to?</h2>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            {["Friendship", "Dating", "Open to either"].map((item) => (
+            {["Dating", "Friendship", "Open"].map((item) => (
               <button
                 key={item}
-                onClick={() => setMatchType(item)}
+                onClick={() => setOpenTo(item)}
                 className={`rounded-2xl border px-6 py-6 text-left transition-all duration-300
                   ${
-                    matchType === item
+                    openTo === item
                       ? "border-[#f3b6c0] bg-[#f3b6c0]/15 shadow-lg shadow-[#f3b6c0]/30"
                       : "border-white/10 bg-white/5 hover:bg-white/10"
                   }
-                  hover:-translate-y-1
-                `}
+                  hover:-translate-y-1`}
               >
                 {item}
               </button>
@@ -71,43 +97,30 @@ export default function Preferences() {
           </div>
         </section>
 
-        {/* Age Range */}
-        <section className="mb-24 animate-slide-up delay-3">
-          <h2 className="mb-4 text-lg font-medium">
-            Preferred age range
-          </h2>
+        {/* ===== AGE PREFERENCE ===== */}
+        <section className="mb-24">
+          <h2 className="mb-6 text-lg font-medium">Age preference</h2>
 
-          <div className="rounded-2xl bg-white/5 p-6 border border-white/10">
-            <div className="flex justify-between text-sm mb-4 text-white/70">
-              <span>{ageRange[0]}</span>
-              <span>{ageRange[1]}</span>
-            </div>
-
-            <input
-              type="range"
-              min="18"
-              max="30"
-              value={ageRange[0]}
-              onChange={(e) =>
-                setAgeRange([+e.target.value, ageRange[1]])
-              }
-              className="w-full accent-[#f3b6c0]"
-            />
-            <input
-              type="range"
-              min="18"
-              max="30"
-              value={ageRange[1]}
-              onChange={(e) =>
-                setAgeRange([ageRange[0], +e.target.value])
-              }
-              className="w-full mt-3 accent-[#f3b6c0]"
-            />
+          <div className="flex flex-wrap gap-3">
+            {["older", "younger", "any"].map((item) => (
+              <button
+                key={item}
+                onClick={() => setAgePreference(item)}
+                className={`rounded-full px-5 py-2 text-sm transition-all duration-200
+                  ${
+                    agePreference === item
+                      ? "bg-[#f3b6c0]/25 text-[#f3b6c0] shadow shadow-[#f3b6c0]/30"
+                      : "bg-white/5 text-white/60 hover:bg-white/10"
+                  }`}
+              >
+                {item}
+              </button>
+            ))}
           </div>
         </section>
 
-        {/* Preferred Gender */}
-        <section className="mb-24 animate-slide-up delay-4">
+        {/* ===== GENDER PREFERENCE ⭐ NEW ===== */}
+        <section className="mb-24">
           <h2 className="mb-6 text-lg font-medium">
             Preferred gender
           </h2>
@@ -116,17 +129,13 @@ export default function Preferences() {
             {["Male", "Female", "Non-binary", "Open to all"].map((item) => (
               <button
                 key={item}
-                onClick={() =>
-                  toggle(item, setPreferredGender, preferredGender)
-                }
+                onClick={() => setGenderPreference(item)}
                 className={`rounded-full px-5 py-2 text-sm transition-all duration-200
                   ${
-                    preferredGender.includes(item)
+                    genderPreference === item
                       ? "bg-[#f3b6c0]/25 text-[#f3b6c0] shadow shadow-[#f3b6c0]/30"
                       : "bg-white/5 text-white/60 hover:bg-white/10"
-                  }
-                  active:scale-95
-                `}
+                  }`}
               >
                 {item}
               </button>
@@ -134,8 +143,8 @@ export default function Preferences() {
           </div>
         </section>
 
-        {/* Preferred Year */}
-        <section className="mb-28 animate-slide-up delay-5">
+        {/* ===== YEAR PREFERENCE ===== */}
+        <section className="mb-28">
           <h2 className="mb-6 text-lg font-medium">
             Preferred year / class
           </h2>
@@ -150,17 +159,13 @@ export default function Preferences() {
             ].map((item) => (
               <button
                 key={item}
-                onClick={() =>
-                  toggle(item, setPreferredYear, preferredYear)
-                }
+                onClick={() => toggle(item)}
                 className={`rounded-full px-5 py-2 text-sm transition-all duration-200
                   ${
-                    preferredYear.includes(item)
+                    yearPreference.includes(item)
                       ? "bg-[#f3b6c0]/25 text-[#f3b6c0] shadow shadow-[#f3b6c0]/30"
                       : "bg-white/5 text-white/60 hover:bg-white/10"
-                  }
-                  active:scale-95
-                `}
+                  }`}
               >
                 {item}
               </button>
@@ -168,10 +173,19 @@ export default function Preferences() {
           </div>
         </section>
 
-        {/* Continue */}
-        <div className="text-center animate-slide-up delay-6">
-          <button className="rounded-full bg-[#f3b6c0] px-12 py-3 font-semibold text-black transition-all duration-300 hover:scale-105 hover:shadow-xl hover:shadow-[#f3b6c0]/40 breathe">
-            Continue →
+        {/* ===== CONTINUE BUTTON ===== */}
+        <div className="text-center">
+          <button
+            onClick={handleContinue}
+            disabled={saving}
+            className={`rounded-full px-12 py-3 font-semibold text-black transition-all duration-300
+              ${
+                saving
+                  ? "bg-[#f3b6c0]/60 cursor-not-allowed"
+                  : "bg-[#f3b6c0] hover:scale-105 hover:shadow-xl hover:shadow-[#f3b6c0]/40"
+              }`}
+          >
+            {saving ? "Saving..." : "Continue →"}
           </button>
         </div>
 
