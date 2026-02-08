@@ -1,0 +1,81 @@
+import findMatches from "./matchmaking-worker.js";
+import calculateCompatibilityScore from "./matchmaking-worker.js"
+
+const testUsers = [
+    {
+      id: "m1",
+      firstName: "Alex",
+      lastName: "Miller",
+      gender: "male",
+      gender_preference: "female",
+      age: 28,
+      age_preference: "any",
+      approved: true,
+      ismatched: false,
+      interests: ["C", "A", "D", "B", "A", "C", "B", "A", "B", "C", "A"],
+    },
+    {
+      id: "f1",
+      firstName: "Riley",
+      lastName: "Chen",
+      gender: "female",
+      gender_preference: "male",
+      age: 27,
+      age_preference: "any",
+      approved: true,
+      ismatched: false,
+      interests: ["C", "A", "D", "B", "A", "C", "B", "A", "B", "C", "A"],
+    },
+    {
+      id: "m2",
+      firstName: "Noah",
+      lastName: "Patel",
+      gender: "male",
+      gender_preference: "female",
+      age: 25,
+      age_preference: "elder",
+      approved: true,
+      ismatched: false,
+      interests: ["A", "A", "A", "A", "A", "A", "A", "A", "A", "A", "A"],
+    },
+    {
+      id: "f2",
+      firstName: "Maya",
+      lastName: "Garcia",
+      gender: "female",
+      gender_preference: "male",
+      age: 26,
+      age_preference: "younger",
+      approved: true,
+      ismatched: false,
+      interests: ["B", "B", "B", "B", "B", "B", "B", "B", "B", "B", "B"],
+    },
+    {
+      id: "m3",
+      firstName: "Ethan",
+      lastName: "Brooks",
+      gender: "male",
+      gender_preference: "female",
+      age: 30,
+      age_preference: "any",
+      approved: true,
+      ismatched: false,
+      interests: ["B", "C", "C", "A", "B", "A", "C", "B", "A", "B", "C"],
+    },
+    {
+      id: "f3",
+      firstName: "Sofia",
+      lastName: "Khan",
+      gender: "female",
+      gender_preference: "male",
+      age: 29,
+      age_preference: "any",
+      approved: true,
+      ismatched: false,
+      interests: ["B", "C", "B", "A", "C", "A", "C", "B", "A", "B", "C"],
+    },
+  ];
+
+const { matchedPairs } = findMatches(testUsers);
+
+console.log("Matched pairs:", matchedPairs);

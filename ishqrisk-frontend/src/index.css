@@ -1,0 +1,100 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@import url("https://fonts.googleapis.com/css2?family=Playfair+Display:wght@500;600;700&family=Inter:wght@400;500;600&display=swap");
+
+html,
+body {
+  height: 100%;
+}
+
+body {
+  font-family: "Inter", system-ui, sans-serif;
+  color: white;
+}
+
+/* ===== Reference-style background (desktop + default) ===== */
+.bg-reference {
+  background:
+    radial-gradient(
+      1200px 700px at 50% -200px,
+      rgba(200, 145, 155, 0.12),
+      transparent 72%
+    ),
+    linear-gradient(
+      to right,
+      rgba(200, 145, 155, 0.035),
+      rgba(200, 145, 155, 0.06),
+      rgba(200, 145, 155, 0.035)
+    ),
+    radial-gradient(
+      900px 600px at -200px 55%,
+      rgba(200, 145, 155, 0.09),
+      transparent 78%
+    ),
+    radial-gradient(
+      900px 600px at 120% 55%,
+      rgba(200, 145, 155, 0.08),
+      transparent 78%
+    ),
+    #0b0a0a;
+}
+
+/* ===== Mobile quieting (same vibe, lower intensity) ===== */
+@media (max-width: 640px) {
+  .bg-reference {
+    background:
+      radial-gradient(
+        1200px 700px at 50% -300px,
+        rgba(200, 145, 155, 0.10),
+        transparent 75%
+      ),
+      linear-gradient(
+        to right,
+        rgba(200, 145, 155, 0.03),
+        rgba(200, 145, 155, 0.05),
+        rgba(200, 145, 155, 0.03)
+      ),
+      #0b0a0a;
+  }
+}
+
+/* ===== Hearts styling (reference-accurate) ===== */
+.heart-lg {
+  width: 32px;
+  height: 32px;
+  stroke: rgba(216, 167, 177, 0.45);
+  fill: rgba(216, 167, 177, 0.12);
+}
+
+.heart-md {
+  width: 24px;
+  height: 24px;
+  stroke: rgba(216, 167, 177, 0.4);
+  fill: rgba(216, 167, 177, 0.1);
+}
+
+.heart-sm {
+  width: 18px;
+  height: 18px;
+  stroke: rgba(216, 167, 177, 0.35);
+  fill: rgba(216, 167, 177, 0.08);
+}
+
+.heart-xs {
+  width: 14px;
+  height: 14px;
+  stroke: rgba(216, 167, 177, 0.3);
+  fill: rgba(216, 167, 177, 0.06);
+}
+
+/* subtle divider line */
+.rose-line {
+  background: linear-gradient(
+    to bottom,
+    transparent,
+    rgba(216, 167, 177, 0.25),
+    transparent
+  );
+}
