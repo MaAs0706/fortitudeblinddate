@@ -1,31 +1,107 @@
-# WorkFlow
-* Authentication</br>
-Every user has to be authenticated 
+# 💘 Ishqrisk – A Blind Date Experience for Valentine’s Day @ Fortitude MEC
 
-* Interest/Preference</br>
-We are gonna take the preferences and interests of the person , the interests will be used for matching and the preferences will be used to finalise them . 
+Ishqrisk is a **Valentine’s Day–exclusive blind date application** built for **Fortitude MEC**.  
+It is designed to help students explore connections in a fun, low-pressure way — **without creating awkwardness or discomfort afterward**.
 
-* Waiting Area
+This platform ensures that identities are revealed **only when both users mutually agree**.
 
-* Matched Area
+---
 
-After this they both will be able to chat for a limited time , and at this moment their profile wont be visible only a nickname , in the chats they are not allowed to give any personal info .
+##  The Problem
 
-After the time is over , both of them will get a button asking if they want to continue , if both of them give yes then the profiles will be visible , if even one of them says no then they will exit . 
+Valentine’s Day brings curiosity, excitement, and sometimes hesitation.
 
-This is to make sure that even if anyone is rejected after the chat phase , it doesnt create any awkwardness when they meet in college afterwards , or any other consequences.
+In a college environment:
+- Rejection can feel awkward
+- Mismatches can lead to uncomfortable encounters later
+- Many students avoid trying at all because of social pressure
 
-## How to use it 
+Ishqrisk removes that fear.
 
-* First Make sure that you are in the correct file 
+---
 
- cd ishqrisk-frontend
+##  The Solution
 
- first install the dependencies 
- npm install 
+A **safe, anonymous blind date flow** where:
+- Conversations come before identities
+- Consent is mandatory on both sides
+- Walking away has **zero consequences**
 
- Run  
- npm run dev 
+If there’s a spark — continue.  
+If not — part ways gracefully.
 
+---
 
+##  How It Works
 
+###  Authentication
+- Every user must be authenticated before entering the platform.
+- Ensures genuine participation during the Valentine’s Day event.
+
+---
+
+###  Interests & Preferences
+- Users submit:
+  - **Interests** → used for matching
+  - **Preferences** → used to finalize compatibility
+- Matches are meaningful, not random.
+
+---
+
+###  Waiting Area
+- Users enter a **waiting area** while the system finds a compatible match.
+
+---
+
+###  Match Found
+- Once matched, both users move to a shared interaction space.
+
+---
+
+###  Anonymous Timed Chat (Blind Phase)
+- Users chat for a **limited time**.
+- During this phase:
+  - Only a **nickname** is visible
+  - **Profiles remain hidden**
+  - **No personal information** is allowed
+
+This ensures unbiased and pressure-free interaction.
+
+---
+
+###  Mutual Decision
+- After the chat timer ends, both users choose:
+  - **YES** – continue
+  - **NO** – exit
+
+#### Result:
+- 💞 **Both YES** → Profiles are revealed
+- 🌫️ **Either NO** → Match ends silently
+
+No awkwardness.  
+No forced explanations.  
+No real-life discomfort.
+
+---
+
+##  Why There’s No Awkwardness
+
+- Anonymous first interaction
+- Mutual consent required
+- No visibility unless both agree
+- Clean exit if interest is not mutual
+
+Designed so that even if users meet later on campus, nothing feels uncomfortable.
+
+---
+
+##  Running the Project (Frontend)
+
+Navigate to the frontend directory:
+
+```bash
+cd ishqrisk-frontend
+
+npm install
+
+npm run dev 
