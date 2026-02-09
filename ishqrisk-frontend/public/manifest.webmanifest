@@ -1,0 +1,13 @@
+{
+  "name": "ISHQ Risk",
+  "short_name": "ISHQ",
+  "id": "/",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#0b1220",
+  "theme_color": "#0b1220",
+  "icons": [
+    { "src": "/icons/love-always-wins.png", "sizes": "512x512", "type": "image/png", "purpose": "any" }
+  ]
+}
