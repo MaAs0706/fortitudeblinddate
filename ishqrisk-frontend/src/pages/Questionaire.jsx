@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useAuth } from "../context/AuthContext";
 import { supabase } from "../lib/supabase";
-
+import { useNavigate } from "react-router-dom";
 const questions = [
     {
         question: "If your personality had a warning label, it would say:",
@@ -107,6 +107,7 @@ const questions = [
 
 export default function Questionnaire() {
     const { user } = useAuth();
+    const navigate = useNavigate();
 
     const [step, setStep] = useState(0);
     const [isTurning, setIsTurning] = useState(false);
@@ -139,7 +140,7 @@ export default function Questionnaire() {
                         Object.entries(newAnswers).map(([k, v]) => [String(k), v])
                     );
 
-                    await supabase
+                    const { error } =await supabase
                         .from("users")
                         .update({
                             interests: JSON.stringify(formattedAnswers),
@@ -147,6 +148,13 @@ export default function Questionnaire() {
                             onboarding_step: "waiting",
                         })
                         .eq("id", user.id);
+
+                        if (error) {
+        console.error(error);
+        setSaving(false);
+        return; // ⛔ stop navigation if save failed
+      }
+      navigate("/waiting")
                 } catch (err) {
                     console.error(err);
                 } finally {
@@ -226,7 +234,7 @@ export default function Questionnaire() {
                                 : "We’re finding someone who matches your vibe."}
                         </p>
 
-                        <button className="rounded-full bg-[#f3b6c0] px-12 py-3 font-semibold text-black breathe">
+                        <button onClick={handleSelect}className="rounded-full bg-[#f3b6c0] px-12 py-3 font-semibold text-black breathe">
                             Continue →
                         </button>
                     </div>

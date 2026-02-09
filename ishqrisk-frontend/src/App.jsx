@@ -5,6 +5,7 @@ import Landing from "./pages/Landing";
 import BasicInfo from "./pages/BasicInfo";
 import Preferences from "./pages/Preferences";
 import Questionnaire from "./pages/Questionaire";
+import Waiting from "./pages/Waiting";
 
 export default function App() {
   const { user, profile, loading } = useAuth();
@@ -15,7 +16,7 @@ export default function App() {
   if (!user) {
     return (
       <Routes>
-        <Route path="*" element={<Landing />} />
+        <Route path="*" element={<Waiting />} />
       </Routes>
     );
   }
@@ -36,7 +37,7 @@ export default function App() {
       <Route path="/preferences" element={<Preferences />} />
       <Route path="/qna" element={<Questionnaire />} />
 
-      <Route path="/done" element={<div>Done</div>} />
+      <Route path="/waiting" element={<Waiting/>} />
 
       {/* fallback */}
       <Route path="*" element={<Navigate to={getOnboardingRoute()} />} />

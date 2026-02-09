@@ -11,62 +11,66 @@ export default function Waiting() {
     let height = (canvas.height = window.innerHeight);
 
     const snowflakes = [];
-    const piles = [];
-    const SNOW_COUNT = 150;
+    const SNOW_COUNT = 260; // ↑ more snow
 
+    // Wind system
     let wind = 0;
     let windTarget = 0;
 
-    const STICK_ZONE = {
+    // Slow zone around text (invisible calm area)
+    const SLOW_ZONE = {
       x: width * 0.25,
-      y: height * 0.36,
+      y: height * 0.35,
       w: width * 0.5,
-      h: 170,
+      h: 200,
     };
 
     const rand = (min, max) => Math.random() * (max - min) + min;
 
-    for (let i = 0; i < SNOW_COUNT; i++) {
-      snowflakes.push({
+    function createSnowflake() {
+      return {
         x: rand(0, width),
         y: rand(-height, 0),
-        r: rand(0.8, 2),
-        speed: rand(0.5, 1.2),
-        drift: rand(-0.2, 0.2),
-        opacity: rand(0.4, 0.9),
-      });
+        r: rand(0.7, 2.2),
+        speed: rand(0.6, 1.6),
+        drift: rand(-0.3, 0.3),
+        opacity: rand(0.35, 0.9),
+      };
     }
 
-    const inStickZone = (f) =>
-      f.x > STICK_ZONE.x &&
-      f.x < STICK_ZONE.x + STICK_ZONE.w &&
-      f.y > STICK_ZONE.y &&
-      f.y < STICK_ZONE.y + STICK_ZONE.h;
+    for (let i = 0; i < SNOW_COUNT; i++) {
+      snowflakes.push(createSnowflake());
+    }
+
+    function inSlowZone(f) {
+      return (
+        f.x > SLOW_ZONE.x &&
+        f.x < SLOW_ZONE.x + SLOW_ZONE.w &&
+        f.y > SLOW_ZONE.y &&
+        f.y < SLOW_ZONE.y + SLOW_ZONE.h
+      );
+    }
 
     function animate() {
       ctx.clearRect(0, 0, width, height);
 
+      // Smooth wind
       wind += (windTarget - wind) * 0.002;
-      if (Math.random() < 0.002) windTarget = rand(-0.6, 0.6);
+      if (Math.random() < 0.002) {
+        windTarget = rand(-0.5, 0.5);
+      }
 
       for (const f of snowflakes) {
-        f.y += f.speed;
-        f.x += f.drift + wind;
+        const slowFactor = inSlowZone(f) ? 0.35 : 1;
 
-        if (inStickZone(f) && Math.random() < 0.02) {
-          piles.push({
-            x: f.x,
-            y: f.y,
-            w: rand(18, 32),
-            h: rand(4, 7),
-            life: 0.6,
-          });
+        f.y += f.speed * slowFactor;
+        f.x += (f.drift + wind) * slowFactor;
+
+        if (f.y > height) {
           f.y = -10;
           f.x = rand(0, width);
-          continue;
         }
 
-        if (f.y > height) f.y = -10;
         if (f.x < -10) f.x = width + 10;
         if (f.x > width + 10) f.x = -10;
 
@@ -76,21 +80,22 @@ export default function Waiting() {
         ctx.fill();
       }
 
-      for (const p of piles) {
-        p.life = Math.min(p.life + 0.0004, 0.85);
-        p.w += Math.abs(wind) * 0.01;
-        p.x += wind * 0.15;
-
-        ctx.beginPath();
-        ctx.ellipse(p.x, p.y, p.w, p.h, 0, 0, Math.PI * 2);
-        ctx.fillStyle = `rgba(255,255,255,${p.life})`;
-        ctx.fill();
-      }
-
       requestAnimationFrame(animate);
     }
 
     animate();
+
+    function resize() {
+      width = canvas.width = window.innerWidth;
+      height = canvas.height = window.innerHeight;
+
+      SLOW_ZONE.x = width * 0.25;
+      SLOW_ZONE.y = height * 0.35;
+      SLOW_ZONE.w = width * 0.5;
+    }
+
+    window.addEventListener("resize", resize);
+    return () => window.removeEventListener("resize", resize);
   }, []);
 
   return (
@@ -103,12 +108,11 @@ export default function Waiting() {
         </p>
 
         <h1
-          className="max-w-xl text-3xl md:text-4xl font-semibold leading-tight"
+          className="max-w-xl text-3xl md:text-4xl leading-tight text-white/90"
           style={{
-  fontFamily: "Satisfy, cursive",
-  letterSpacing: "0.02em",
-}}
-
+            fontFamily: "Satisfy, cursive",
+            letterSpacing: "0.02em",
+          }}
         >
           We’re finding someone<br />who feels right for you
         </h1>
@@ -118,7 +122,7 @@ export default function Waiting() {
           Just a quiet moment before something new begins.
         </p>
 
-        {/* HEART ORB */}
+        {/* Heart pulse */}
         <div className="mt-14 relative">
           <div className="heart-pulse" />
         </div>
@@ -136,7 +140,7 @@ export default function Waiting() {
           height: 22px;
           background: #f3b6c0;
           transform: rotate(-45deg);
-          animation: pulse 2.8s ease-in-out infinite;
+          animation: pulse 3s ease-in-out infinite;
           box-shadow: 0 0 30px rgba(243,182,192,0.45);
         }
 
@@ -162,7 +166,7 @@ export default function Waiting() {
 
         @keyframes pulse {
           0% { transform: rotate(-45deg) scale(1); opacity: 0.8; }
-          50% { transform: rotate(-45deg) scale(1.15); opacity: 1; }
+          50% { transform: rotate(-45deg) scale(1.18); opacity: 1; }
           100% { transform: rotate(-45deg) scale(1); opacity: 0.8; }
         }
       `}</style>
