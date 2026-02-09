@@ -1,7 +1,18 @@
 import Navbar from "../components/layout/Navbar";
 import { Heart } from "lucide-react";
+import { supabase } from "../lib/supabase";
 
 export default function Landing() {
+
+  const signIn = async () => {
+    await supabase.auth.signInWithOAuth({
+      provider: "google",
+      options: {
+        redirectTo: `${window.location.origin}/basic`
+      }
+    });
+  };
+
   return (
     <div className="relative min-h-screen overflow-hidden bg-reference">
       <Navbar />
@@ -44,7 +55,7 @@ export default function Landing() {
 
           {/* CTAs */}
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <button className="bg-[#D8A7B1] text-black font-semibold px-8 py-4 sm:py-3 rounded-full hover:scale-[1.04] hover:shadow-xl hover:shadow-[#D8A7B1]/30 transition-all duration-300">
+            <button onClick={signIn} className="bg-[#D8A7B1] text-black font-semibold px-8 py-4 sm:py-3 rounded-full hover:scale-[1.04] hover:shadow-xl hover:shadow-[#D8A7B1]/30 transition-all duration-300">
               Start a Blind Date →
             </button>
 
