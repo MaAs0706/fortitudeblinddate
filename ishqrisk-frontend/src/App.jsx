@@ -6,6 +6,7 @@ import BasicInfo from "./pages/BasicInfo";
 import Preferences from "./pages/Preferences";
 import Questionnaire from "./pages/Questionaire";
 import Waiting from "./pages/Waiting";
+import Chat from "./pages/Chat";
 
 export default function App() {
   const { user, profile, loading } = useAuth();
@@ -16,7 +17,7 @@ export default function App() {
   if (!user) {
     return (
       <Routes>
-        <Route path="*" element={<Landing />} />
+        <Route path="*" element={<Chat />} />
       </Routes>
     );
   }
