@@ -27,27 +27,55 @@ const LOVE_LANGUAGE_COMPATIBILITY = {
   D: { A: 0.6, B: 0.5, C: 0.7, D: 1.0, E: 0.8 },
   E: { A: 0.5, B: 0.4, C: 0.6, D: 0.8, E: 1.0 },
 };
+const checkAgePreference = (pref, myAge, otherAge) => {
+  if (!pref || pref === "any") return true;
+
+  if (pref === "same or older") {
+    return otherAge >= myAge;
+  }
+
+  if (pref === "same or younger") {
+    return otherAge <= myAge;
+  }
+
+  if (pref === "older") {
+    return otherAge > myAge;
+  }
+
+  if (pref === "younger") {
+    return otherAge < myAge;
+  }
+
+  return true;
+};
 
 // Check if two users match basic preferences
 const checkPreferenceMatch = (user1, user2) => {
-  // Check gender preferences
   const genderMatch =
     user1.gender_preference === user2.gender &&
     user2.gender_preference === user1.gender;
 
   if (!genderMatch) return false;
 
-  // Check age preferences
   const age1 = user1.age;
   const age2 = user2.age;
+  if (!user1.age || !user2.age) return false;
 
-  if (user1.age_preference === "older" && age2 <= age1) return false;
-  if (user1.age_preference === "younger" && age2 >= age1) return false;
-  if (user2.age_preference === "older" && age1 <= age2) return false;
-  if (user2.age_preference === "younger" && age1 >= age2) return false;
 
-  return true;
+  if (!checkAgePreference(user1.age_preference, age1, age2)) return false;
+  if (!checkAgePreference(user2.age_preference, age2, age1)) return false;
+
+  if (user1.year_preference?.length > 0) {
+    if (!user1.year_preference.includes(user2.year)) return false;
+  }
+
+  if (user2.year_preference?.length > 0) {
+    if (!user2.year_preference.includes(user1.year)) return false;
+  }
+
+  return true; // ⭐ VERY IMPORTANT
 };
+
 
 // Calculate compatibility score for a specific question
 const calculateQuestionScore = (questionIndex, answer1, answer2) => {
@@ -96,13 +124,16 @@ const calculateCompatibilityScore = (user1, user2) => {
   user1.interests.forEach((answer1, index) => {
     const answer2 = user2.interests[index];
     const weight = QUESTION_WEIGHTS[index];
+    if (!weight) return;
+
     const score = calculateQuestionScore(index, answer1, answer2);
 
     totalScore += weight * score;
     totalWeight += weight;
   });
 
-  return (totalScore / totalWeight) * 100;
+  return totalWeight > 0 ? (totalScore / totalWeight) * 100 : 0;
+
 };
 
 // Main matching function
@@ -116,6 +147,8 @@ const findMatches = (users) => {
   const eligibleUsers = users.filter(
     (user) => user.approved && !user.ismatched
   );
+  const userMap = new Map(eligibleUsers.map(u => [u.id, u]));
+
   const matchedUsers = new Set();
   const finalMatches = [];
 
@@ -184,13 +217,15 @@ const findMatches = (users) => {
 
           if (mutualCheckId === user1.id && score1 > highestMutualScore) {
             bestMutualMatch = {
-              pair: [user1, eligibleUsers.find((u) => u.id === user2Id)],
+              pair: [user1, userMap.get(user2Id)
+              ],
               score: score1,
               details: {
                 user1: `${user1.firstName} ${user1.lastName}`,
-                user2: `${
-                  eligibleUsers.find((u) => u.id === user2Id).firstName
-                } ${eligibleUsers.find((u) => u.id === user2Id).lastName}`,
+                user2: `${userMap.get(user2Id)
+                  .firstName
+                  } ${userMap.get(user2Id)
+                    .lastName}`,
                 score: score1.toFixed(2),
               },
             };
@@ -217,7 +252,7 @@ const findMatches = (users) => {
 
   // Second pass: Match remaining users based only on basic preferences
   const remainingUsers = eligibleUsers.filter(user => !matchedUsers.has(user.id));
-  
+
   for (let i = 0; i < remainingUsers.length; i++) {
     const user1 = remainingUsers[i];
     if (matchedUsers.has(user1.id)) continue;
