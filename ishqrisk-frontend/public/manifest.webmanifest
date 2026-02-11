@@ -9,13 +9,13 @@
   "theme_color": "#0b1220",
   "icons": [
     {
-      "src": "/icons/love-always-wins.png",
+      "src": "/ishqrisk-frontend/src/icons/love-always-win.png",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "any"
     },
     {
-      "src": "/icons/love-always-wins.png",
+      "src": "/ishqrisk-frontend/src/icons/love-always-wins.png",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "maskable any"
