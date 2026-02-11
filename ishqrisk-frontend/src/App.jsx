@@ -10,6 +10,11 @@ import Waiting from "./pages/Waiting";
 import Chat from "./pages/Chat";
 
 const ProtectedStep = ({ step, profile, children }) => {
+  // ⭐ Allow new users to access basic onboarding
+  if (!profile && step === "basic") {
+    return children;
+  }
+
   const correctRoute = getOnboardingRoute(profile);
 
   if (profile?.onboarding_step !== step) {
@@ -18,6 +23,7 @@ const ProtectedStep = ({ step, profile, children }) => {
 
   return children;
 };
+
 
 /* ⭐ Pure path resolver */
 const getOnboardingRoute = (profile) => {
