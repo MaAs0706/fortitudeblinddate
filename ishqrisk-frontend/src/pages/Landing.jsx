@@ -1,9 +1,9 @@
+import React, { useMemo } from "react";
 import Navbar from "../components/layout/Navbar";
 import { Heart } from "lucide-react";
 import { supabase } from "../lib/supabase";
 
 export default function Landing() {
-
   const signIn = async () => {
     await supabase.auth.signInWithOAuth({
       provider: "google",
@@ -13,55 +13,77 @@ export default function Landing() {
     });
   };
 
+  // Increased count and added blur/opacity variations
+  const backgroundHearts = useMemo(() => 
+    Array.from({ length: 20 }).map((_, i) => ({
+      id: i,
+      left: `${Math.random() * 100}%`,
+      size: Math.random() * 30 + 12, // Larger range
+      delay: Math.random() * 10,
+      duration: Math.random() * 10 + 15, // Slightly faster to be noticed
+      blur: Math.random() > 0.5 ? "blur(1px)" : "blur(0px)",
+    })), []);
+
   return (
-    <div className="relative min-h-screen overflow-hidden bg-reference">
+    <div className="relative min-h-screen overflow-hidden bg-reference selection:bg-[#D8A7B1]/30">
       <Navbar />
 
-      {/* Left ambient spine (desktop only) */}
-      <div className="pointer-events-none absolute left-8 top-0 h-full w-px bg-white/10 hidden lg:block" />
-
-      {/* Decorative hearts (desktop only) */}
-      <div className="pointer-events-none absolute top-1/2 left-6 hidden -translate-y-1/2 flex-col items-center gap-6 lg:flex xl:left-16">
-        <Heart className="heart-lg" />
-        <Heart className="heart-sm" />
-
-        <div className="h-24 w-px rose-line" />
-
-        <Heart className="heart-md" />
-        <Heart className="heart-xs" />
+      {/* --- AMBIENT FLOATING HEARTS LAYER --- */}
+      <div className="absolute inset-0 pointer-events-none overflow-hidden">
+        {backgroundHearts.map((h) => (
+          <div
+            key={h.id}
+            className="animate-float-slow absolute bottom-[-10%] opacity-0"
+            style={{
+              left: h.left,
+              animationDelay: `${h.delay}s`,
+              animationDuration: `${h.duration}s`,
+              filter: h.blur,
+            }}
+          >
+            {/* Added a drop-shadow glow to make them pop against the dark bg */}
+            <Heart 
+              size={h.size} 
+              strokeWidth={1.5} 
+              className="text-[#D8A7B1] fill-[#D8A7B1]/20 drop-shadow-[0_0_8px_rgba(216,167,177,0.8)]" 
+            />
+          </div>
+        ))}
       </div>
 
-      {/* Hero */}
-      <section className="min-h-screen flex items-center justify-center px-4 sm:px-6">
-        <div className="max-w-3xl text-center mt-24 relative z-10">
+      {/* Decorative grain/noise overlay */}
+      <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-20 pointer-events-none mix-blend-screen" />
 
-          {/* Tag */}
-<div className="inline-flex items-center gap-2 px-4 py-1 mb-6 rounded-full border border-white/15 text-sm text-white/70">
-  💬 A quieter way to meet someone
-</div>
+      {/* Hero Content */}
+      <section className="relative z-10 min-h-screen flex items-center justify-center px-4">
+        <div className="max-w-4xl text-center">
+          
+          <div className="inline-flex items-center gap-2 px-4 py-1.5 mb-8 rounded-full border border-[#D8A7B1]/30 bg-[#D8A7B1]/5 text-sm font-medium text-[#D8A7B1] backdrop-blur-md animate-fade-in">
+            <span className="w-2 h-2 rounded-full bg-[#D8A7B1] animate-ping" />
+            A quieter way to meet someone
+          </div>
 
-{/* Headline */}
-<h1 className="text-[2.2rem] leading-tight sm:text-4xl md:text-6xl font-semibold mb-6 font-[Playfair Display]">
-  Love begins with a{" "}
-  <span className="text-[#D8A7B1]">conversation</span>
-</h1>
+          <h1 className="text-6xl md:text-8xl font-medium mb-8 tracking-tight leading-[1.1] animate-slide-up">
+            Love begins with a <br />
+            <span className="italic font-serif text-[#D8A7B1] drop-shadow-sm">conversation</span>
+          </h1>
 
-{/* Subtext */}
-<p className="text-white/70 text-base sm:text-lg mb-10 px-2 sm:px-0 font-[Inter]">
-  No photos. No pressure.
-  <br />
-  Just two people talking — and letting the connection grow naturally.
-</p>
+          <p className="max-w-xl mx-auto text-white/70 text-lg md:text-2xl mb-12 leading-relaxed font-light animate-slide-up delay-1">
+            No photos. No pressure. <br />
+            Just two people talking.
+          </p>
 
-{/* CTA */}
-<button
-  onClick={signIn}
-  className="bg-[#D8A7B1] text-black font-semibold px-8 py-4 rounded-full hover:scale-[1.04] hover:shadow-xl hover:shadow-[#D8A7B1]/30 transition-all duration-300"
->
-  Start a conversation →
-</button>
-
-
+          <div className="animate-slide-up delay-2">
+            <button
+              onClick={signIn}
+              className="group relative bg-[#D8A7B1] text-black font-bold px-12 py-6 rounded-full overflow-hidden transition-all duration-500 hover:scale-110 hover:shadow-[0_0_50px_rgba(216,167,177,0.5)]"
+            >
+              <span className="relative z-10 flex items-center gap-3 text-lg">
+                Start a conversation 
+                <span className="transition-transform duration-300 group-hover:translate-x-2">→</span>
+              </span>
+            </button>
+          </div>
         </div>
       </section>
     </div>
