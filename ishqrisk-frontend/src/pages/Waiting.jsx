@@ -1,14 +1,19 @@
 import { useEffect, useRef, useState } from "react";
+import { useNavigate } from "react-router-dom";
 
 export default function Waiting() {
   const canvasRef = useRef(null);
-
+  const navigate = useNavigate() ;
+    const handleChat = ()=>(
+        navigate("/test-chat")
+    )
   // Possible values: "waiting" | "no_match" | "matched"
   const [status, setStatus] = useState("waiting");
 
   /* ---------------- SNOW SYSTEM (ONLY WHILE WAITING) ---------------- */
   useEffect(() => {
     if (status !== "waiting") return;
+
 
     const canvas = canvasRef.current;
     const ctx = canvas.getContext("2d");
@@ -187,6 +192,7 @@ export default function Waiting() {
                 <br />
                 A soft conversation.
               </p>
+              <button onClick={handleChat}> Test for chat page </button>
             </div>
           </div>
         )}

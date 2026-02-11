@@ -10,9 +10,13 @@ const templates = [
   { id: "expressive", name: "Expressive", vibe: "Creative · Bold" },
 ];
 
+const GENDER_OPTIONS = ["Man", "Woman", "Non-binary"];
+const YEAR_OPTIONS = ["1st Year", "2nd Year", "3rd Year", "4th Year", "Postgrad"]; // ⭐ Added Year Options
+
 export default function BasicInfo() {
   const navigate = useNavigate();
   const { user } = useAuth();
+  const [autoNickname] = useState(() => generateNickname());
 
   const [autoNickname] = useState(() => generateNickname());
   const [selectedTemplate, setSelectedTemplate] = useState("minimal");
@@ -29,6 +33,7 @@ export default function BasicInfo() {
     age: "",
     nickname: "",
     gender: "",
+    year: "", // ⭐ Added to state
     phoneno: "",
   });
 
@@ -59,7 +64,7 @@ export default function BasicInfo() {
 
   /* Upload + Save */
   const handleContinue = async () => {
-    if (!user || saving) return;
+    if (!user || saving || !isFormValid) return;
 
     setError(null);
 
@@ -205,6 +210,9 @@ export default function BasicInfo() {
           >
             {saving ? "Saving..." : "Continue →"}
           </button>
+          {!isFormValid && !saving && (
+             <p className="mt-4 text-[10px] uppercase tracking-widest text-[#D8A7B1] opacity-50">All fields required to proceed</p>
+          )}
         </div>
       </div>
     </div>
@@ -214,8 +222,8 @@ export default function BasicInfo() {
 /* INPUT */
 function Input({ label, ...props }) {
   return (
-    <div className="flex flex-col gap-2">
-      <label className="text-sm text-muted-foreground">{label}</label>
+    <div className="flex flex-col gap-2 group">
+      <label className="text-[10px] uppercase tracking-[0.2em] text-white/30 font-bold ml-1 group-focus-within:text-[#D8A7B1] transition-colors">{label}</label>
       <input
         {...props}
         className="rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm outline-none"

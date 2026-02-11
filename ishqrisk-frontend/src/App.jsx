@@ -39,6 +39,7 @@ export default function App() {
       <Route path="/qna" element={<Questionnaire />} />
 
       <Route path="/waiting" element={<Waiting/>} />
+      <Route path="/test-chat" element={<Chat/>} />
 
       {/* fallback */}
       <Route path="*" element={<Navigate to={getOnboardingRoute()} />} />
