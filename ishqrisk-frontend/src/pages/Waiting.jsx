@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useAuth } from "../context/AuthContext";
 import { useNavigate } from "react-router-dom";
-import { onInstallStateChange, promptInstall } from "../utils/pwa";
+import { onInstallStateChange, promptInstall } from "../../public/pws";
 
 export default function Waiting() {
   const canvasRef = useRef(null);
