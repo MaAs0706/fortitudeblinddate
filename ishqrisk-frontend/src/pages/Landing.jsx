@@ -1,17 +1,10 @@
 import React, { useMemo } from "react";
 import Navbar from "../components/layout/Navbar";
 import { Heart } from "lucide-react";
-import { supabase } from "../lib/supabase";
+import signIn from "../lib/signIn";
 
 export default function Landing() {
-  const signIn = async () => {
-    await supabase.auth.signInWithOAuth({
-      provider: "google",
-      options: {
-        redirectTo: `${window.location.origin}/basic`
-      }
-    });
-  };
+  
 
   // Increased count and added blur/opacity variations
   const backgroundHearts = useMemo(() => 

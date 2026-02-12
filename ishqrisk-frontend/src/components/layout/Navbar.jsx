@@ -1,3 +1,5 @@
+import signIn from "../../lib/signIn";
+
 export default function Navbar() {
   return (
     <nav className="w-full fixed top-0 left-0 z-50">
@@ -32,7 +34,7 @@ export default function Navbar() {
           </div>
 
           {/* CTA */}
-          <button
+          <button onClick={signIn}
             className="
               bg-primary
               text-primary-foreground
