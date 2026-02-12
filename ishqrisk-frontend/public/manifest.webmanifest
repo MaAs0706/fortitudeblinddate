@@ -8,9 +8,10 @@
   "theme_color": "#0b1220",
   "icons": [
     {
-      "src": "/icons/icon.png",
+      "src": "/icons/icon.svg",
       "sizes": "144x144",
-      "type": "image/png"
+      "type": "image/png",
+      "purpose": "any"
     },
     {
       "src": "/icons/icon.png",
