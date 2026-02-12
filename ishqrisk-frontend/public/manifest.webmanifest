@@ -1,6 +1,6 @@
 {
   "name": "Ishq Risk",
-  "short_name": "Ishq",
+  "short_name": "Ishq Risk",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
@@ -9,12 +9,12 @@
   "icons": [
     {
       "src": "/icons/icon.png",
-      "sizes": "512x512",
+      "sizes": "144x144",
       "type": "image/png"
     },
     {
       "src": "/icons/icon.png",
-      "sizes": "512x512",
+      "sizes": "144x144",
       "type": "image/png",
       "purpose": "maskable"
     }
