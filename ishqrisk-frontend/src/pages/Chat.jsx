@@ -67,7 +67,7 @@ export default function Chat() {
     if (!session) return;
 
     const channel = supabase
-      .channel("messages-realtime")
+      .channel(`messages-${session.id}`)
       .on(
         "postgres_changes",
         {
@@ -102,35 +102,35 @@ export default function Chat() {
   const [isTyping, setIsTyping] = useState(false);
 
   useEffect(() => {
-    if (!session || !user) return;
+  if (!session || !user) return;
 
-    const loadMessages = async () => {
-      const { data, error } = await supabase
-        .from("messages")
-        .select("*")
-        .eq("session_id", session.id)
-        .order("created_at", { ascending: true });
+  const loadMessages = async () => {
+    const { data, error } = await supabase
+      .from("messages")
+      .select("*")
+      .eq("session_id", session.id)
+      .order("created_at", { ascending: true });
 
-      if (error) {
-        console.error("Failed loading messages:", error);
-        setLoadingMessages(false);
-        return;
-      }
-
-
-      const formatted = data.map((msg) => ({
-        id: msg.id,
-        sender: msg.sender_id === user.id ? "me" : "other",
-        text: msg.text,
-      }));
-
-      setMessages(formatted);
+    if (error) {
+      console.error("Failed loading messages:", error);
       setLoadingMessages(false);
+      return;
+    }
 
-    };
+    const formatted = data.map((msg) => ({
+      id: msg.id,
+      sender: msg.sender_id === user.id ? "me" : "other",
+      text: msg.text,
+    }));
 
-    loadMessages();
-  }, [session?.id, user?.id]);
+    setMessages(formatted);
+    setLoadingMessages(false);
+  };
+
+  loadMessages();
+}, [session?.id]);
+
+   
 
   useEffect(() => {
     if (!session || !user) return;
