@@ -49,6 +49,11 @@ const checkAgePreference = (pref, myAge, otherAge) => {
   return true;
 };
 
+const yearMatch = (pref, year) => {
+  if (!pref || pref.length === 0) return true;
+  if (pref.includes("any year")) return true;
+  return pref.includes(year);
+};
 // Check if two users match basic preferences
 const checkPreferenceMatch = (user1, user2) => {
   console.log("---- Checking ----");
@@ -85,15 +90,15 @@ const checkPreferenceMatch = (user1, user2) => {
     return false;
   }
 
-  if (user1.year_preference?.length > 0) {
-    console.log("User1 year pref:", user1.year_preference, "vs", user2.year);
-    if (!user1.year_preference.includes(user2.year)) return false;
-  }
+  if (!yearMatch(user1.year_preference, user2.year)) {
+  console.log("User1 year pref failed");
+  return false;
+}
 
-  if (user2.year_preference?.length > 0) {
-    console.log("User2 year pref:", user2.year_preference, "vs", user1.year);
-    if (!user2.year_preference.includes(user1.year)) return false;
-  }
+if (!yearMatch(user2.year_preference, user1.year)) {
+  console.log("User2 year pref failed");
+  return false;
+}
 
   console.log("✅ Preference matched");
   return true;
