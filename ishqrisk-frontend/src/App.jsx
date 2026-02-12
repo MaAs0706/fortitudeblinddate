@@ -8,6 +8,8 @@ import Preferences from "./pages/Preferences";
 import Questionnaire from "./pages/Questionaire";
 import Waiting from "./pages/Waiting";
 import Chat from "./pages/Chat";
+/* ... other imports ... */
+import Match from "./pages/Match";
 
 const ProtectedStep = ({ step, profile, children }) => {
   // ⭐ Allow new users to access basic onboarding
@@ -27,23 +29,15 @@ const ProtectedStep = ({ step, profile, children }) => {
 
 /* ⭐ Pure path resolver */
 const getOnboardingRoute = (profile) => {
-
-
-  if (!profile) return "/basic"; // NEW USERS → basic
+  if (!profile) return "/basic";
 
   switch (profile.onboarding_step) {
-    case "basic":
-      return "/basic";
-    case "preferences":
-      return "/preferences";
-    case "qna":
-      return "/qna";
-    case "waiting":
-      return "/waiting";
-    case "matched":
-      return "/chat";
-    default:
-      return "/basic";
+    case "basic": return "/basic";
+    case "preferences": return "/preferences";
+    case "qna": return "/qna";
+    case "waiting": return "/waiting";
+    case "matched": return "/match"; // Changed from /chat to /match
+    default: return "/basic";
   }
 };
 
@@ -119,6 +113,19 @@ export default function App() {
         element={
           <ProtectedStep step="waiting" profile={profile}>
             <Waiting />
+          </ProtectedStep>
+        }
+      />
+
+     
+
+      {/* ... other routes ... */}
+      
+      <Route
+        path="/match"
+        element={
+          <ProtectedStep step="matched" profile={profile}>
+            <Match />
           </ProtectedStep>
         }
       />

@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
+import { motion, AnimatePresence } from "framer-motion";
 import { supabase } from "../lib/supabase";
 import { useSession } from "../context/SessionContext";
 import { useAuth } from "../context/AuthContext";
@@ -9,12 +10,16 @@ export default function Chat() {
 
   const { session } = useSession();
   const { user, profile } = useAuth();
+  console.log(session)
+  const scrollRef = useRef(null);
   const typingChannelRef = useRef(null);
+  const lastTypingSent = useRef(0);
 
   const [localMessageCount, setLocalMessageCount] = useState(0);
 
   console.log(profile);
   const [loadingMessages, setLoadingMessages] = useState(true);
+  const [viewportHeight, setViewportHeight] = useState("100dvh");
 
   const [messages, setMessages] = useState([]);
   const MAX_MESSAGES = 100;
@@ -27,24 +32,13 @@ export default function Chat() {
   useEffect(() => {
     if (!session?.id) return;
 
-    const channel = supabase
-      .channel(`session-update-${session.id}`)
-      .on(
-        "postgres_changes",
-        {
-          event: "UPDATE",
-          schema: "public",
-          table: "sessions",
-          filter: `id=eq.${session.id}`,
-        },
-        (payload) => {
-          setLocalMessageCount(payload.new.message_count);
-        }
-      )
-      .subscribe();
+      // If more than an hour left, show HH:MM:SS, else just MM:SS
+      const display = hours > 0
+        ? `${hours}:${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`
+        : `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
 
-    return () => supabase.removeChannel(channel);
-  }, [session?.id]);
+      setTimeLeft(display);
+    };
 
   useEffect(() => {
     if (session?.message_count != null) {
@@ -52,6 +46,7 @@ export default function Chat() {
     }
   }, [session?.message_count]);
 
+  // --- 3. Supabase Message Loading & Realtime ---
   useEffect(() => {
     if (!session) return;
 
@@ -76,14 +71,29 @@ export default function Chat() {
             {
               id: msg.id,
               sender: "other",
-              text: msg.text,
-            },
-          ]);
+              text: payload.new.text
+            }]);
+          }
+        } else if (payload.eventType === "DELETE") {
+          // payload.old.id is only available if Replica Identity is FULL
+          setMessages(prev => prev.filter(m => m.id !== payload.old.id));
         }
-      )
+      })
+      // Listen for Session Updates (The Message Count)
+      .on("postgres_changes", {
+        event: "UPDATE",
+        schema: "public",
+        table: "sessions",
+        filter: `id=eq.${session.id}`
+      }, (payload) => {
+        // Sync the local count with the DB (including the reset to 25)
+        setLocalMessageCount(payload.new.message_count);
+      })
       .subscribe();
 
-    return () => supabase.removeChannel(channel);
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, [session?.id, user?.id]);
 
   const [input, setInput] = useState("");
@@ -122,32 +132,28 @@ export default function Chat() {
     if (!session || !user) return;
 
     typingChannelRef.current = supabase.channel(`typing-${session.id}`);
-
     typingChannelRef.current
       .on("broadcast", { event: "typing" }, ({ payload }) => {
-        if (payload.sender_id === user.id) return;
-
-        setIsTyping(payload.isTyping);
-
-        if (payload.isTyping) {
-          setTimeout(() => setIsTyping(false), 2000);
+        if (payload.sender_id !== user.id) {
+          setIsTyping(payload.isTyping);
+          if (payload.isTyping) setTimeout(() => setIsTyping(false), 3000);
         }
-      })
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(typingChannelRef.current);
-    };
+      }).subscribe();
+    return () => supabase.removeChannel(typingChannelRef.current);
   }, [session?.id, user?.id]);
 
   const bottomRef = useRef(null);
 
   useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+    if (scrollRef.current) {
+      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+    }
   }, [messages, isTyping]);
 
   const sendMessage = async () => {
     if (!input.trim() || !session) return;
+    const textToSend = input;
+    const tempId = Date.now();
 
     const newMessage = {
       session_id: session.id,
@@ -169,9 +175,7 @@ export default function Chat() {
     // ⭐ Insert ONLY this message
     const { error } = await supabase.from("messages").insert(newMessage);
 
-    if (error) {
-      console.error("Message insert error:", error);
-    }
+    if (error) console.error("Send error:", error);
   };
 
   if (loadingMessages) {
@@ -241,16 +245,18 @@ export default function Chat() {
         />
       </div>
 
-      {/* 🌙 Header */}
-      <div className="sticky top-0 z-20 bg-[#0c111f]/40 backdrop-blur-md border-b border-white/10 px-6 py-5">
-        <div className="flex justify-between items-center w-full">
+      {/* Header Progress Section */}
+      <div className="flex-none bg-[#0c111f]/60 backdrop-blur-xl border-b border-white/10 px-6 py-4 z-20">
+        <div className="flex justify-between items-center">
           <div>
-            <p className="text-sm font-bold text-[#ed9e6f] tracking-widest uppercase">
-              {profile.nickname || "ANONYMOUS"}
+            <p className="text-sm font-bold text-[#ed9e6f] uppercase tracking-widest">
+              {user?.id === session?.user_a ? session?.nickname_b : session?.nickname_a}
             </p>
-            <p className="text-[10px] text-white/40 tracking-tighter uppercase">
-              ✦ Anonymous Blind Date
-            </p>
+            <p className="text-[10px] text-white/40 uppercase">✦ Anonymous Match</p>
+          </div>
+          <div className="text-right">
+            <p className="text-sm font-mono font-bold text-[#b66570]">{timeLeft}</p>
+            <p className="text-[9px] text-white/30 uppercase">Time Remaining</p>
           </div>
           <p className="text-xs text-[#b66570] font-mono">07:42 LEFT</p>
         </div>
@@ -285,9 +291,9 @@ export default function Chat() {
               >
                 {msg.text}
               </div>
-            </div>
-          );
-        })}
+            </motion.div>
+          ))}
+        </AnimatePresence>
 
         {/* 💡 STABLE TYPING INDICATOR CONTAINER */}
         <div className="min-h-[40px] flex items-center">
@@ -307,9 +313,9 @@ export default function Chat() {
         <div ref={bottomRef} />
       </div>
 
-      {/* 💌 Input Area */}
-      <div className="p-6 pb-10 w-full">
-        <div className="flex gap-2 items-center bg-[#2d1f44]/80 backdrop-blur-2xl border border-white/10 rounded-full p-1.5 shadow-2xl">
+      {/* Input */}
+      <div className="p-4 pb-8 flex-none bg-[#0c111f]">
+        <motion.div layout className="flex gap-2 items-center bg-[#2d1f44]/90 border border-white/10 rounded-full p-1.5 shadow-2xl">
           <input
             value={input}
             onChange={(e) => {
@@ -326,17 +332,17 @@ export default function Chat() {
             }}
             onKeyDown={(e) => e.key === "Enter" && sendMessage()}
             placeholder="Whisper to the stars..."
-            className="flex-1 bg-transparent px-5 py-2 text-sm outline-none placeholder:text-white/30"
+            className="flex-1 bg-transparent px-5 py-2 text-sm outline-none placeholder:text-white/20"
           />
           <button
             onClick={sendMessage}
-            className="bg-[#ed9e6f] text-[#0c111f] p-2.5 rounded-full hover:scale-105 active:scale-95 transition-transform"
+            className="bg-[#ed9e6f] text-[#0c111f] p-2.5 rounded-full active:scale-90 transition-all"
           >
             <svg viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5">
               <path d="M3.478 2.405a.75.75 0 00-.926.94l2.432 7.905H13.5a.75.75 0 010 1.5H4.984l-2.432 7.905a.75.75 0 00.926.94 60.519 60.519 0 0018.445-8.986.75.75 0 000-1.218A60.517 60.517 0 003.478 2.405z" />
             </svg>
           </button>
-        </div>
+        </motion.div>
       </div>
     </div>
   );
