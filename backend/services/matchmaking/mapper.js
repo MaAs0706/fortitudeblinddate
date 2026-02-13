@@ -1,32 +1,47 @@
 // Question weights for scoring (total = 100)
 const QUESTION_WEIGHTS = {
-  0: 10, // Personality type
-  1: 8, // Ideal date
-  2: 12, // Love language
-  3: 6, // Communication preference
-  4: 4, // Love at first sight
-  5: 8, // Lifestyle/Sunday preference
-  6: 6, // Entertainment preference
-  7: 4, // Approach to romance
-  8: 15, // Partner preferences
-  9: 15, // Relationship goals
-  10: 12, // Conflict resolution
+  0: 7, // Warning Label for personality
+  1: 11, // You fall for someone
+  2: 7, // Food slice...
+  3: 13, // When you're emotionaly drained
+  4: 8, // Your idea of flirting
+  5: 12, // What scares you more....
+  6: 8, // Life Philosophy..
+  7: 12, // You feel closerst when...
+  8: 15, // Your biggest red flag...
+  9: 7 //Dating Experience...
 };
 
-// Special compatibility matrices
-const PERSONALITY_COMPATIBILITY = {
-  A: { A: 1.0, B: 0.3, C: 0.7 }, // Introvert
-  B: { A: 0.3, B: 1.0, C: 0.7 }, // Extrovert
-  C: { A: 0.7, B: 0.7, C: 1.0 }, // Ambivert
+
+const STRUCTURAL_RULES = {
+  3: {
+    complement: [
+      ["A", "C"],
+      ["D", "B"],
+    ],
+    friction: [
+      ["A", "D"],
+    ],
+  },
+  5: {
+    friction: [
+      ["B", "E"],
+      ["D", "E"],
+    ],
+  },
+  7: {
+    complement: [
+      ["A", "E"],
+    ],
+  },
+  8: {
+    friction: [
+      ["B", "D"],
+      ["E", "D"],
+    ],
+  },
 };
 
-const LOVE_LANGUAGE_COMPATIBILITY = {
-  A: { A: 1.0, B: 0.5, C: 0.7, D: 0.6, E: 0.5 },
-  B: { A: 0.5, B: 1.0, C: 0.6, D: 0.5, E: 0.4 },
-  C: { A: 0.7, B: 0.6, C: 1.0, D: 0.7, E: 0.6 },
-  D: { A: 0.6, B: 0.5, C: 0.7, D: 1.0, E: 0.8 },
-  E: { A: 0.5, B: 0.4, C: 0.6, D: 0.8, E: 1.0 },
-};
 const checkAgePreference = (pref, myAge, otherAge) => {
   if (!pref || pref === "any") return true;
 
@@ -49,6 +64,17 @@ const checkAgePreference = (pref, myAge, otherAge) => {
   return true;
 };
 
+const checkIntentMatch = (user1, user2) => {
+  // If either is "open", it's a match
+  if (user1.opento === "open" || user2.opento === "open") return true;
+
+  // Otherwise, they must want the same thing (e.g., both "dating")
+  return user1.opento === user2.opento;
+};
+
+// Add this into your main checkPreferenceMatch function:
+
+
 const yearMatch = (pref, year) => {
   if (!pref || pref.length === 0) return true;
   if (pref.includes("any year")) return true;
@@ -59,21 +85,19 @@ const checkPreferenceMatch = (user1, user2) => {
   console.log("---- Checking ----");
   console.log(user1.nickname, "vs", user2.nickname);
 
-  const genderMatch =
-    user1.gender_preference === user2.gender &&
+ const u1AcceptsU2 = 
+    user1.gender_preference === "open to all" || 
+    user1.gender_preference === user2.gender;
+
+  const u2AcceptsU1 = 
+    user2.gender_preference === "open to all" || 
     user2.gender_preference === user1.gender;
 
-  console.log("Gender check:",
-    user1.gender_preference,
-    user2.gender,
-    "|",
-    user2.gender_preference,
-    user1.gender,
-    "=>",
-    genderMatch
-  );
+  if (!(u1AcceptsU2 && u2AcceptsU1)) {
+    console.log("Gender preference mismatch");
+    return false;
+  }
 
-  if (!genderMatch) return false;
 
   if (!user1.age || !user2.age) {
     console.log("Age missing");
@@ -91,14 +115,19 @@ const checkPreferenceMatch = (user1, user2) => {
   }
 
   if (!yearMatch(user1.year_preference, user2.year)) {
-  console.log("User1 year pref failed");
-  return false;
-}
+    console.log("User1 year pref failed");
+    return false;
+  }
 
-if (!yearMatch(user2.year_preference, user1.year)) {
-  console.log("User2 year pref failed");
-  return false;
-}
+  if (!yearMatch(user2.year_preference, user1.year)) {
+    console.log("User2 year pref failed");
+    return false;
+  }
+
+  if (!checkIntentMatch(user1, user2)) {
+    console.log("Intent mismatch (opento)");
+    return false;
+  }
 
   console.log("✅ Preference matched");
   return true;
@@ -106,44 +135,38 @@ if (!yearMatch(user2.year_preference, user1.year)) {
 
 
 
-// Calculate compatibility score for a specific question
-const calculateQuestionScore = (questionIndex, answer1, answer2) => {
-  // Personality type compatibility (Question 0)
-  if (questionIndex === 0) {
-    return PERSONALITY_COMPATIBILITY[answer1]?.[answer2] || 0;
+const calculateQuestionScore = (index, a1, a2) => {
+  if (!a1 || !a2) return 0;
+
+  // Structural handling
+  if (STRUCTURAL_RULES[index]) {
+    const rules = STRUCTURAL_RULES[index];
+
+    if (a1 === a2) return 1.0;
+
+    if (rules.complement) {
+      for (const [x, y] of rules.complement) {
+        if ((a1 === x && a2 === y) || (a1 === y && a2 === x)) {
+          return 0.85;
+        }
+      }
+    }
+
+    if (rules.friction) {
+      for (const [x, y] of rules.friction) {
+        if ((a1 === x && a2 === y) || (a1 === y && a2 === x)) {
+          return 0.25;
+        }
+      }
+    }
+
+    return 0.6;
   }
 
-  // Love language compatibility (Question 2)
-  if (questionIndex === 2) {
-    return LOVE_LANGUAGE_COMPATIBILITY[answer1]?.[answer2] || 0;
-  }
-
-  // Relationship goals (Question 9)
-  if (questionIndex === 9) {
-    if (answer1 === answer2) return 1.0;
-    if (
-      (answer1 === "A" && answer2 === "B") ||
-      (answer1 === "B" && answer2 === "A")
-    )
-      return 0.2;
-    if (answer1 === "C" || answer2 === "C") return 0.6;
-    return 0.3;
-  }
-
-  // Conflict resolution (Question 10)
-  if (questionIndex === 10) {
-    if (answer1 === answer2) return 1.0;
-    if (
-      (answer1 === "A" && answer2 === "C") ||
-      (answer1 === "C" && answer2 === "A")
-    )
-      return 0.8;
-    return 0.5;
-  }
-
-  // Default scoring for other questions
-  return answer1 === answer2 ? 1.0 : 0.5;
+  // Default logic
+  return a1 === a2 ? 1.0 : 0.5;
 };
+
 
 // Calculate overall compatibility score between two users
 const calculateCompatibilityScore = (user1, user2) => {
