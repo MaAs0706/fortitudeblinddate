@@ -48,6 +48,14 @@ export default function Chat() {
     }
 
     setDecisionMade(true);
+    // ⭐ Save Instagram if provided
+    if (instagramId && instagramId.trim().length > 0) {
+      await supabase
+        .from("users")
+        .update({ instagram_id: instagramId.trim() })
+        .eq("id", user.id);
+    }
+
 
     const updates = isUserA
       ? {
@@ -456,6 +464,13 @@ export default function Chat() {
               </p>
 
               <div className="flex flex-col gap-4">
+                {/* ⭐ Instagram Optional Field */}
+                <input
+                  type="text"
+                  onChange={(e) => setInstagramId(e.target.value.replace("@", ""))}
+                  placeholder="Instagram ID without @ (optional)"
+                  className="w-full bg-white/5 border border-white/10 text-white text-sm px-4 py-4 rounded-2xl outline-none placeholder:text-white/30"
+                />
                 <button
                   onClick={() => handleRevealDecision('full')}
                   className="w-full bg-[#ed9e6f] text-[#0c111f] font-bold py-4 rounded-2xl active:scale-95 transition-all"
@@ -468,6 +483,9 @@ export default function Chat() {
                 >
                   ✦ REVEAL NAME ONLY
                 </button>
+
+
+
                 <button
                   onClick={() => handleRevealDecision('deny')}
                   className="w-full bg-white/5 border border-white/10 text-white/40 py-4 rounded-2xl active:scale-95 transition-all"
