@@ -23,6 +23,7 @@ export default function Chat() {
   const [loadingMessages, setLoadingMessages] = useState(true);
   const [viewportHeight, setViewportHeight] = useState("100dvh");
   const [isExpired, setIsExpired] = useState(false);
+  const [instagramId, setInstagramId] = useState("");
 
   // Timer & Stats States
   const [timeLeft, setTimeLeft] = useState("--:--");
