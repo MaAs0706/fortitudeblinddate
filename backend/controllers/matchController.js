@@ -66,7 +66,7 @@ export const matchUsers = async (req, res) => {
 
     /* 1️⃣ Fetch profiles */
     const { data: profiles, error } = await supabase
-      .from("test")
+      .from("users")
       .select("*");
 
     if (error) {
@@ -133,15 +133,15 @@ export const matchUsers = async (req, res) => {
         message_count: 0,
         status: "active",
         start_time: new Date().toISOString(),
-        end_time: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
+        end_time: new Date(Date.now() + 15 * 60 * 60 * 1000).toISOString(),
       });
     }
 
     // Perform DB operations in parallel for speed
     await Promise.all([
-      supabase.from("sessions_test").insert(sessionInserts),
+      supabase.from("sessions").insert(sessionInserts),
       supabase
-        .from("test") // Using "test" as per your controller's current code
+        .from("users") // Using "test" as per your controller's current code
         .update({ onboarding_step: "matched", ismatched: true })
         .in("id", matchedUserIds)
     ]);

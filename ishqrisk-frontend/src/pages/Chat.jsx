@@ -13,6 +13,9 @@ export default function Chat() {
   const typingChannelRef = useRef(null);
   const lastTypingSent = useRef(0);
 
+  const [decisionMade, setDecisionMade] = useState(false);
+
+
   // States
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState("");
@@ -27,33 +30,52 @@ export default function Chat() {
   const MAX_MESSAGES = 100;
 
 
+
   const handleRevealDecision = async (choiceType) => {
+    if (decisionMade) return; // ⭐ block multiple clicks
+
     const isUserA = user.id === session.user_a;
 
-    // Map choices to your DB columns
+    const myChoice = isUserA
+      ? session.reveal_a
+      : session.reveal_b;
+
+    // ⭐ already answered → do nothing
+    if (myChoice !== null) {
+      navigate("/reveal", { state: { session } });
+      return;
+    }
+
+    setDecisionMade(true);
+
     const updates = isUserA
       ? {
-        reveal_a: choiceType !== 'deny',
-        phone_reveal_a: choiceType === 'full'
+        reveal_a: choiceType !== "deny",
+        phone_reveal_a: choiceType === "full",
       }
       : {
-        reveal_b: choiceType !== 'deny',
-        phone_reveal_b: choiceType === 'full'
+        reveal_b: choiceType !== "deny",
+        phone_reveal_b: choiceType === "full",
       };
 
-    const { error } = await supabase
+    const { data, error } = await supabase
       .from("sessions")
       .update(updates)
-      .eq("id", session.id);
+      .eq("id", session.id)
+      .select();
 
-    if (!error) {
-      if (choiceType === 'deny') {
-        navigate("/"); // Safe exit to landing
-      } else {
-        navigate("/reveal", { state: { session } });
-      }
+    console.log("Reveal update:", data, error);
+
+
+    if (error) {
+      setDecisionMade(false);
+      return;
     }
+
+    // ⭐ DO NOT NAVIGATE HERE
+    // realtime listener will handle navigation
   };
+
   // --- 1. Viewport Height Fix (Keyboard Smoothing) ---
   useEffect(() => {
     const handleResize = () => {
@@ -110,6 +132,12 @@ export default function Chat() {
 
   // --- 3. Supabase Message Loading & Realtime ---
   useEffect(() => {
+    const test = supabase.channel(`session-${session.id}`);
+
+test.subscribe((status) => {
+  console.log("Realtime status:", status);
+});
+
     if (!session?.id || !user?.id) return;
 
     const loadData = async () => {
@@ -157,9 +185,44 @@ export default function Chat() {
         table: "sessions",
         filter: `id=eq.${session.id}`
       }, (payload) => {
-        // Sync the local count with the DB (including the reset to 25)
-        setLocalMessageCount(payload.new.message_count);
-      })
+        console.log("Session update received:", payload.new);
+
+        const updated = payload.new;
+
+        setLocalMessageCount(updated.message_count);
+
+        const isUserA = user.id === updated.user_a;
+
+        const myChoice = isUserA
+          ? updated.reveal_a
+          : updated.reveal_b;
+
+        const bothAgreed =
+          updated.reveal_a === true &&
+          updated.reveal_b === true;
+
+        const anyoneDenied =
+          updated.reveal_a === false ||
+          updated.reveal_b === false;
+
+        // ⭐ realtime navigation control
+        if (anyoneDenied) {
+          navigate("/denied");
+          return;
+        }
+
+        if (myChoice !== null) {
+          navigate("/reveal", { state: { session: updated } });
+          return;
+        }
+
+
+        // ⭐ If I already answered → go waiting screen
+        if (isExpired && myChoice !== null) {
+          navigate("/reveal", { state: { session: updated } });
+        }
+      }
+      )
       .subscribe();
 
     return () => {
@@ -218,8 +281,13 @@ export default function Chat() {
 
     if (error) console.error("Send error:", error);
   };
-
+  const isUserA = user?.id === session?.user_a;
+  const myRevealChoice = isUserA
+    ? session?.reveal_a
+    : session?.reveal_b;
   if (loadingMessages) return <div className="h-screen bg-[#0c111f] flex items-center justify-center text-[#ed9e6f]">✦ Initializing...</div>;
+
+
 
   return (
     <div className="relative w-full text-white flex flex-col overflow-hidden bg-[#0c111f]" style={{ height: viewportHeight }}>
@@ -341,7 +409,7 @@ export default function Chat() {
         </motion.div>
       </div>
       <AnimatePresence>
-        {isExpired && (
+        {isExpired && myRevealChoice === null && (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}

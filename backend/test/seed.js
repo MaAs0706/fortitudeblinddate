@@ -8,7 +8,7 @@ const triggerExpiryTest = async (sessionId) => {
 
   const { data, error } = await supabase
     .from("sessions")
-    .update({ end_time: testEndTime , start_time:new Date(Date.now()).toISOString()})
+    .update({ end_time: testEndTime , start_time:new Date(Date.now()).toISOString(), reveal_a:null,reveal_b:null,phone_reveal_a:false,phone_reveal_b:false})
     .eq("id", sessionId);
 
   if (error) console.error("Test setup failed:", error);

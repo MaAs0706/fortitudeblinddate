@@ -11,6 +11,7 @@ import Chat from "./pages/Chat";
 /* ... other imports ... */
 import Match from "./pages/Match";
 import Reveal from "./pages/Reveal";
+import Denied from "./pages/Denied";
 
 const ProtectedStep = ({ step, profile, children }) => {
   // ⭐ Allow new users to access basic onboarding
@@ -50,14 +51,22 @@ export default function App() {
 
   /* 🔁 Redirect logic */
   useEffect(() => {
-    if (!user) return;
+    if (!user || !profile) return;
+
+    // ⭐ Pages that should NOT be controlled by onboarding router
+    const freeRoutes = ["/chat", "/reveal", "/denied"];
+
+    if (freeRoutes.includes(location.pathname)) {
+      return;
+    }
 
     const route = getOnboardingRoute(profile);
 
     if (location.pathname !== route) {
       navigate(route, { replace: true });
     }
-  }, [user, profile?.onboarding_step]);
+  }, [user, profile?.onboarding_step, location.pathname]);
+
 
   /* 🌌 ONLY block while hydrating */
   if (authLoading || profileLoading) {
@@ -118,10 +127,10 @@ export default function App() {
         }
       />
 
-     
+
 
       {/* ... other routes ... */}
-      
+
       <Route
         path="/match"
         element={
@@ -149,7 +158,17 @@ export default function App() {
         }
       />
 
-      <Route path="*" element={<Navigate to={getOnboardingRoute(profile)} replace />} />
+       <Route
+        path="/denied"
+        element={
+          
+            <Denied />
+
+        }
+      />
+
+      <Route path="*" element={<BasicInfo />} />
+
     </Routes>
 
   );
