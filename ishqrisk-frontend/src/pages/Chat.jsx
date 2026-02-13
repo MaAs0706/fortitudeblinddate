@@ -31,6 +31,7 @@ export default function Chat() {
 
 
 
+
   const handleRevealDecision = async (choiceType) => {
     if (decisionMade) return; // ⭐ block multiple clicks
 
@@ -132,7 +133,7 @@ export default function Chat() {
 
   // --- 3. Supabase Message Loading & Realtime ---
   useEffect(() => {
-    
+
 
     if (!session?.id || !user?.id) return;
 
@@ -281,6 +282,41 @@ export default function Chat() {
   const myRevealChoice = isUserA
     ? session?.reveal_a
     : session?.reveal_b;
+
+
+  useEffect(() => {
+    if (!session || !user) return;
+
+    const isUserA = user.id === session.user_a;
+
+    const myChoice = isUserA
+      ? session.reveal_a
+      : session.reveal_b;
+
+    const bothAgreed =
+      session.reveal_a === true &&
+      session.reveal_b === true;
+
+    const anyoneDenied =
+      session.reveal_a === false ||
+      session.reveal_b === false;
+
+    if (anyoneDenied) {
+      navigate("/denied", { replace: true });
+      return;
+    }
+
+    if (bothAgreed || myChoice !== null) {
+      navigate("/reveal", { state: { session }, replace: true });
+    }
+  }, [
+    session?.reveal_a,
+    session?.reveal_b,
+    session?.id,
+    user?.id
+  ]);
+
+
   if (loadingMessages) return <div className="h-screen bg-[#0c111f] flex items-center justify-center text-[#ed9e6f]">✦ Initializing...</div>;
 
 
