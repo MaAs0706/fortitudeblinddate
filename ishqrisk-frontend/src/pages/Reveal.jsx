@@ -203,7 +203,7 @@ const exitReveal = async () => {
 
             <div className="info-block">
               <h2 className="reveal-name">
-                {`${partner.firstName  + partner.lastName}`}
+                {`${partner.firstName}   ${partner.lastName}`}
               </h2>
 
               <p className="reveal-meta text-[11px] font-bold text-black/40 uppercase tracking-[0.2em] mt-1">
