@@ -4,7 +4,7 @@ const supabase = getSupabase()
 // Test: Force session to expire in 10 seconds
 const triggerExpiryTest = async (sessionId) => {
   // Set end_time to 10 seconds from now
-  const testEndTime = new Date(Date.now() + 20*1000).toISOString();
+  const testEndTime = new Date(Date.now() + 7*60*60*1000).toISOString();
 
   const { data, error } = await supabase
     .from("sessions")
