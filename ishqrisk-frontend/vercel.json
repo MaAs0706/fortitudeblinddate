@@ -10,7 +10,7 @@
     { "source": "/pwa.js", "destination": "/pwa.js" },
     { "source": "/icons/(.*)", "destination": "/icons/$1" },
     { "source": "/assets/(.*)", "destination": "/assets/$1" },
-    { "source": "/(.*)", "destination": "/closed.html" }
+    { "source": "/(.*)", "destination": "/index.html" }
   ],
 
   "headers": [
