@@ -6,14 +6,14 @@ import { onInstallStateChange, promptInstall } from "../../public/pws";
 export default function Waiting() {
   const canvasRef = useRef(null);
   const navigate = useNavigate();
-  
+
   // Possible values: "waiting" | "no_match" | "matched"
   const [status, setStatus] = useState("waiting");
-  
+
   // --- PWA State ---
-  const [installState, setInstallState] = useState({ 
-    canInstall: false, 
-    isStandalone: false 
+  const [installState, setInstallState] = useState({
+    canInstall: false,
+    isStandalone: false
   });
 
   useEffect(() => {
@@ -141,7 +141,7 @@ export default function Waiting() {
       {/* --- PWA Install UI --- */}
       {status === "waiting" && installState.canInstall && !installState.isStandalone && (
         <div className="absolute top-6 right-6 z-50">
-          <button 
+          <button
             onClick={handleInstall}
             className="px-4 py-2 bg-white/10 backdrop-blur-md border border-white/20 rounded-full text-[10px] tracking-widest uppercase hover:bg-white/20 transition-all"
           >
@@ -153,14 +153,27 @@ export default function Waiting() {
       <div className="relative z-10 flex min-h-screen items-center justify-center px-6 text-center">
         {status === "waiting" && (
           <div>
-            <p className="mb-3 text-xs tracking-[0.3em] text-white/40">SEARCHING</p>
-            <h1 className="max-w-xl text-3xl md:text-4xl text-white/90 leading-tight" style={{ fontFamily: "Satisfy, cursive" }}>
-              We’re finding someone<br />who feels right for you
+            <p className="mb-3 text-xs tracking-[0.3em] text-white/40">
+              SESSION ENDED
+            </p>
+
+            <h1
+              className="max-w-xl text-3xl md:text-4xl text-white/90 leading-tight"
+              style={{ fontFamily: "Satisfy, cursive" }}
+            >
+              Your current matching session<br />
+              has come to an end
             </h1>
-            <p className="mt-5 text-sm text-white/60">Take a breath. These things take time.</p>
-            <div className="mt-14 heart-pulse" />
+
+            <p className="mt-5 text-sm text-white/60">
+              The stars have drifted apart for now.
+              You’ll be placed back into the pool next time.
+            </p>
+
+            <div className="mt-14 heart-pulse opacity-40" />
           </div>
         )}
+
 
         {/* --- OTHER STATES (no_match / matched) --- */}
         {status === "matched" && (
@@ -169,7 +182,7 @@ export default function Waiting() {
             <div className="card-glass">
               <div className="illustration" />
               <h2 className="mt-7 text-3xl" style={{ fontFamily: "Satisfy, cursive" }}>@moonlitSoul</h2>
-              <button 
+              <button
                 onClick={handleChat}
                 className="mt-6 w-full py-3 bg-[#f3b6c0] text-black rounded-xl font-bold hover:scale-105 transition-transform"
               >

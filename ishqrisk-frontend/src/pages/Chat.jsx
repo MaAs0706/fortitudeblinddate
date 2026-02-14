@@ -7,32 +7,126 @@ import { useAuth } from "../context/AuthContext";
 
 export default function Chat() {
   const navigate = useNavigate();
-
   const { session } = useSession();
   const { user, profile } = useAuth();
-  console.log(session)
   const scrollRef = useRef(null);
   const typingChannelRef = useRef(null);
   const lastTypingSent = useRef(0);
 
-  const [localMessageCount, setLocalMessageCount] = useState(0);
+  const [decisionMade, setDecisionMade] = useState(false);
 
-  console.log(profile);
+
+  // States
+  const [messages, setMessages] = useState([]);
+  const [input, setInput] = useState("");
+  const [isTyping, setIsTyping] = useState(false);
   const [loadingMessages, setLoadingMessages] = useState(true);
   const [viewportHeight, setViewportHeight] = useState("100dvh");
+  const [isExpired, setIsExpired] = useState(false);
+  const [instagramId, setInstagramId] = useState("");
 
-  const [messages, setMessages] = useState([]);
+  // Timer & Stats States
+  const [timeLeft, setTimeLeft] = useState("--:--");
+  const [localMessageCount, setLocalMessageCount] = useState(session?.message_count || 0);
   const MAX_MESSAGES = 100;
 
-  const messagesLeft =
-    localMessageCount != null
-      ? Math.max(MAX_MESSAGES - localMessageCount, 0)
-      : null;
 
+
+
+  const handleRevealDecision = async (choiceType) => {
+    if (decisionMade) return; // ⭐ block multiple clicks
+
+    const isUserA = user.id === session.user_a;
+
+    const myChoice = isUserA
+      ? session.reveal_a
+      : session.reveal_b;
+
+    // ⭐ already answered → do nothing
+    if (myChoice !== null) {
+      navigate("/reveal", { state: { session } });
+      return;
+    }
+
+    setDecisionMade(true);
+    // ⭐ Save Instagram if provided
+    if (instagramId && instagramId.trim().length > 0) {
+      await supabase
+        .from("users")
+        .update({ instagram_id: instagramId.trim() })
+        .eq("id", user.id);
+    }
+
+
+    const updates = isUserA
+      ? {
+        reveal_a: choiceType !== "deny",
+        phone_reveal_a: choiceType === "full",
+      }
+      : {
+        reveal_b: choiceType !== "deny",
+        phone_reveal_b: choiceType === "full",
+      };
+
+    const { data, error } = await supabase
+      .from("sessions")
+      .update(updates)
+      .eq("id", session.id)
+      .select();
+
+    console.log("Reveal update:", data, error);
+
+
+    if (error) {
+      setDecisionMade(false);
+      return;
+    }
+
+    // ⭐ DO NOT NAVIGATE HERE
+    // realtime listener will handle navigation
+  };
+
+  // --- 1. Viewport Height Fix (Keyboard Smoothing) ---
   useEffect(() => {
-    if (!session?.id) return;
+    const handleResize = () => {
+      if (window.visualViewport) setViewportHeight(`${window.visualViewport.height}px`);
+    };
+    window.visualViewport?.addEventListener("resize", handleResize);
+    handleResize();
+    return () => window.visualViewport?.removeEventListener("resize", handleResize);
+  }, []);
 
-      // If more than an hour left, show HH:MM:SS, else just MM:SS
+  // --- 2. Live Countdown Logic (Synchronized to end_time) ---
+  useEffect(() => {
+    if (!session?.end_time) return;
+
+    const calculateTime = () => {
+      if (!session?.end_time) return;
+
+      // 1. Get the DB time (UTC)
+      const dbDate = new Date(session.end_time);
+
+      // 2. Get the Current Time in IST specifically
+      // We use Date.now() + offset to ensure we are comparing apples to apples
+      const now = new Date();
+      const adjustedEndTime = dbDate.getTime()
+      // Convert both to a common "Absolute" time
+
+      const nowMs = now.getTime();
+
+      const diff = adjustedEndTime - nowMs;
+
+      if (diff <= 0) {
+        setTimeLeft("00:00:00");
+        setIsExpired(true);
+        return;
+      }
+
+      // Formatting logic remains the same
+      const hours = Math.floor(diff / (1000 * 60 * 60));
+      const mins = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+      const secs = Math.floor((diff % (1000 * 60)) / 1000);
+
       const display = hours > 0
         ? `${hours}:${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`
         : `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
@@ -40,36 +134,47 @@ export default function Chat() {
       setTimeLeft(display);
     };
 
-  useEffect(() => {
-    if (session?.message_count != null) {
-      setLocalMessageCount(session.message_count);
-    }
-  }, [session?.message_count]);
+    const timer = setInterval(calculateTime, 1000);
+    calculateTime(); // Run immediately on mount
+
+    return () => clearInterval(timer);
+  }, [session?.end_time]);
 
   // --- 3. Supabase Message Loading & Realtime ---
   useEffect(() => {
-    if (!session) return;
 
-    const channel = supabase
-      .channel(`messages-${session.id}`)
-      .on(
-        "postgres_changes",
-        {
-          event: "INSERT",
-          schema: "public",
-          table: "messages",
-          filter: `session_id=eq.${session.id}`,
-        },
-        (payload) => {
-          const msg = payload.new;
 
-          // ⭐ IMPORTANT: Ignore own messages
-          if (msg.sender_id === user.id) return;
+    if (!session?.id || !user?.id) return;
 
-          setMessages((prev) => [
-            ...prev,
-            {
-              id: msg.id,
+    const loadData = async () => {
+      const { data } = await supabase
+        .from("messages")
+        .select("*")
+        .eq("session_id", session.id)
+        .order("created_at", { ascending: true });
+
+      if (data) setMessages(data.map(m => ({
+        id: m.id,
+        sender: m.sender_id === user.id ? "me" : "other",
+        text: m.text
+      })));
+      setLoadingMessages(false);
+    };
+    loadData();
+
+    // Create one channel for the session
+    const channel = supabase.channel(`session-${session.id}`)
+      // Listen for ALL message changes (INSERT and DELETE)
+      .on("postgres_changes", {
+        event: "*",
+        schema: "public",
+        table: "messages",
+        filter: `session_id=eq.${session.id}`
+      }, (payload) => {
+        if (payload.eventType === "INSERT") {
+          if (payload.new.sender_id !== user.id) {
+            setMessages(prev => [...prev, {
+              id: payload.new.id,
               sender: "other",
               text: payload.new.text
             }]);
@@ -86,51 +191,53 @@ export default function Chat() {
         table: "sessions",
         filter: `id=eq.${session.id}`
       }, (payload) => {
-        // Sync the local count with the DB (including the reset to 25)
-        setLocalMessageCount(payload.new.message_count);
-      })
+        console.log("Session update received:", payload.new);
+
+        const updated = payload.new;
+
+        setLocalMessageCount(updated.message_count);
+
+        const isUserA = user.id === updated.user_a;
+
+        const myChoice = isUserA
+          ? updated.reveal_a
+          : updated.reveal_b;
+
+        const bothAgreed =
+          updated.reveal_a === true &&
+          updated.reveal_b === true;
+
+        const anyoneDenied =
+          updated.reveal_a === false ||
+          updated.reveal_b === false;
+
+        // ⭐ realtime navigation control
+        if (anyoneDenied) {
+          navigate("/denied");
+          return;
+        }
+
+        if (myChoice !== null) {
+          navigate("/reveal", { state: { session: updated } });
+          return;
+        }
+
+
+        // ⭐ If I already answered → go waiting screen
+        if (isExpired && myChoice !== null) {
+          navigate("/reveal", { state: { session: updated } });
+        }
+      }
+      )
       .subscribe();
 
     return () => {
       supabase.removeChannel(channel);
     };
   }, [session?.id, user?.id]);
-
-  const [input, setInput] = useState("");
-  const [isTyping, setIsTyping] = useState(false);
-
+  // --- 4. Typing Broadcast Indicator ---
   useEffect(() => {
-    if (!session || !user) return;
-
-    const loadMessages = async () => {
-      const { data, error } = await supabase
-        .from("messages")
-        .select("*")
-        .eq("session_id", session.id)
-        .order("created_at", { ascending: true });
-
-      if (error) {
-        console.error("Failed loading messages:", error);
-        setLoadingMessages(false);
-        return;
-      }
-
-      const formatted = data.map((msg) => ({
-        id: msg.id,
-        sender: msg.sender_id === user.id ? "me" : "other",
-        text: msg.text,
-      }));
-
-      setMessages(formatted);
-      setLoadingMessages(false);
-    };
-
-    loadMessages();
-  }, [session?.id]);
-
-  useEffect(() => {
-    if (!session || !user) return;
-
+    if (!session?.id) return;
     typingChannelRef.current = supabase.channel(`typing-${session.id}`);
     typingChannelRef.current
       .on("broadcast", { event: "typing" }, ({ payload }) => {
@@ -142,108 +249,91 @@ export default function Chat() {
     return () => supabase.removeChannel(typingChannelRef.current);
   }, [session?.id, user?.id]);
 
-  const bottomRef = useRef(null);
-
   useEffect(() => {
     if (scrollRef.current) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
     }
   }, [messages, isTyping]);
 
+  // --- 5. Action Handlers ---
+  const handleInputChange = (e) => {
+    const val = e.target.value;
+    setInput(val);
+
+    const now = Date.now();
+    // Throttle typing events to once every 2 seconds to avoid REST fallback
+    if (typingChannelRef.current?.state === 'joined' && now - lastTypingSent.current > 2000) {
+      typingChannelRef.current.send({
+        type: "broadcast",
+        event: "typing",
+        payload: { sender_id: user.id, isTyping: true },
+      });
+      lastTypingSent.current = now;
+    }
+  };
+
   const sendMessage = async () => {
     if (!input.trim() || !session) return;
     const textToSend = input;
     const tempId = Date.now();
 
-    const newMessage = {
-      session_id: session.id,
-      sender_id: user.id,
-      text: input,
-    };
-
-    // ⭐ Update UI instantly (optimistic update)
-    setMessages((prev) => [
-      ...prev,
-      {
-        sender: "me",
-        text: input,
-      },
-    ]);
-
+    // Optimistic Update
+    setMessages(prev => [...prev, { id: tempId, sender: "me", text: textToSend }]);
     setInput("");
 
-    // ⭐ Insert ONLY this message
-    const { error } = await supabase.from("messages").insert(newMessage);
+    const { error } = await supabase
+      .from("messages")
+      .insert([{ session_id: session.id, sender_id: user.id, text: textToSend }]);
 
     if (error) console.error("Send error:", error);
   };
+  const isUserA = user?.id === session?.user_a;
+  const myRevealChoice = isUserA
+    ? session?.reveal_a
+    : session?.reveal_b;
 
-  if (loadingMessages) {
-    return (
-      <div className="h-screen w-full flex items-center justify-center bg-[#0c111f] overflow-hidden">
-        {/* Nebula glow */}
-        <div className="absolute inset-0 -z-10">
-          <div
-            className="absolute -top-1/4 -left-1/4 w-[80%] h-[80%] rounded-full opacity-40 blur-[120px]"
-            style={{
-              background: "radial-gradient(circle, #512f5c 0%, transparent 70%)",
-            }}
-          />
-          <div
-            className="absolute -bottom-1/4 left-[5%] w-[70%] h-[70%] rounded-full opacity-30 blur-[100px] animate-pulse"
-            style={{
-              background: "radial-gradient(circle, #ed9e6f 0%, transparent 60%)",
-              animationDuration: "10s",
-            }}
-          />
-        </div>
 
-        {/* Loader */}
-        <div className="flex flex-col items-center gap-6">
-          <div className="flex gap-2">
-            <span className="w-3 h-3 bg-[#ed9e6f] rounded-full animate-bounce" />
-            <span className="w-3 h-3 bg-[#b66570] rounded-full animate-bounce [animation-delay:0.2s]" />
-            <span className="w-3 h-3 bg-[#80466e] rounded-full animate-bounce [animation-delay:0.4s]" />
-          </div>
-          <p className="text-[#ed9e6f] font-mono tracking-widest text-xs uppercase animate-pulse">
-            ✦ Connecting souls...
-          </p>
-        </div>
-      </div>
-    );
-  }
+  useEffect(() => {
+    if (!session || !user) return;
+
+    const isUserA = user.id === session.user_a;
+
+    const myChoice = isUserA
+      ? session.reveal_a
+      : session.reveal_b;
+
+    const bothAgreed =
+      session.reveal_a === true &&
+      session.reveal_b === true;
+
+    const anyoneDenied =
+      session.reveal_a === false ||
+      session.reveal_b === false;
+
+    if (anyoneDenied) {
+      navigate("/denied", { replace: true });
+      return;
+    }
+
+    if (bothAgreed || myChoice !== null) {
+      navigate("/reveal", { state: { session }, replace: true });
+    }
+  }, [
+    session?.reveal_a,
+    session?.reveal_b,
+    session?.id,
+    user?.id
+  ]);
+
+
+  if (loadingMessages) return <div className="h-screen bg-[#0c111f] flex items-center justify-center text-[#ed9e6f]">✦ Initializing...</div>;
+
+
 
   return (
-    <div className="relative h-screen w-full text-white flex flex-col overflow-hidden bg-[#0c111f]">
-      {/* 🌌 CSS NEBULA GENERATOR */}
-      <div className="absolute inset-0 -z-10 overflow-hidden pointer-events-none">
-        <div className="absolute inset-0 bg-[#0c111f]" />
-        <div
-          className="absolute -top-1/4 -left-1/4 w-[80%] h-[80%] rounded-full opacity-40 blur-[120px]"
-          style={{
-            background: "radial-gradient(circle, #512f5c 0%, transparent 70%)",
-          }}
-        />
-        <div
-          className="absolute -bottom-1/4 left-[5%] w-[70%] h-[70%] rounded-full opacity-30 blur-[100px] animate-pulse"
-          style={{
-            background: "radial-gradient(circle, #ed9e6f 0%, transparent 60%)",
-            animationDuration: "10s",
-          }}
-        />
-        <div
-          className="absolute top-[20%] -right-1/4 w-[60%] h-[60%] rounded-full opacity-20 blur-[110px]"
-          style={{
-            background: "radial-gradient(circle, #b66570 0%, transparent 70%)",
-          }}
-        />
-        <div
-          className="absolute top-[30%] left-[20%] w-[50%] h-[50%] rounded-full opacity-25 blur-[130px]"
-          style={{
-            background: "radial-gradient(circle, #2d1f44 0%, transparent 70%)",
-          }}
-        />
-      </div>
+    <div className="relative w-full text-white flex flex-col overflow-hidden bg-[#0c111f]" style={{ height: viewportHeight }}>
+      {/* Header */}
+
 
       {/* Header Progress Section */}
       <div className="flex-none bg-[#0c111f]/60 backdrop-blur-xl border-b border-white/10 px-6 py-4 z-20">
@@ -258,85 +348,100 @@ export default function Chat() {
             <p className="text-sm font-mono font-bold text-[#b66570]">{timeLeft}</p>
             <p className="text-[9px] text-white/30 uppercase">Time Remaining</p>
           </div>
-          <p className="text-xs text-[#b66570] font-mono">07:42 LEFT</p>
+        </div>
+
+        {/* 📊 Message Count Progress Bar */}
+        <div className="mt-3 w-full h-[2px] bg-white/10 rounded-full overflow-hidden">
+          <motion.div
+            animate={{
+              width: `${(localMessageCount / MAX_MESSAGES) * 100}%`,
+              backgroundColor: localMessageCount > 90 ? "#ef4444" : "#ed9e6f"
+            }}
+            className="h-full"
+          />
+        </div>
+
+        <div className="flex justify-between mt-1">
+          <p className={`text-[8px] uppercase tracking-widest ${localMessageCount > 90 ? "text-red-500 animate-pulse" : "text-white/20"}`}>
+            {localMessageCount} / {MAX_MESSAGES} Whispers
+          </p>
+          {localMessageCount >= 100 && (
+            <p className="text-[8px] text-[#ed9e6f] uppercase animate-bounce">Fading oldest whispers...</p>
+          )}
         </div>
       </div>
 
-      {messagesLeft !== null && (
-        <p className="text-[10px] text-white/40 tracking-wide mt-1 px-6">
-          ✦ {messagesLeft} messages until older whispers fade…
-        </p>
-      )}
-
-      {/* 💬 Messages Area */}
-      <div className="flex-1 overflow-y-auto px-6 py-8 space-y-6 w-full scrollbar-hide">
-        {messages.map((msg, index) => {
-          const isMine = msg.sender === "me";
-
-          return (
-            <div
-              key={msg.id || index}
-              className={`flex ${
-                isMine ? "justify-end" : "justify-start"
-              } animate-fadeIn`}
+      {/* Messages */}
+      {/* Messages Area */}
+      <div ref={scrollRef} className="flex-1 overflow-y-auto px-6 py-4 space-y-4 scrollbar-hide">
+        {/* Messages List */}
+        <AnimatePresence initial={false}>
+          {messages.map((msg) => (
+            <motion.div
+              key={msg.id}
+              initial={{ opacity: 0, y: 10, scale: 0.95 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              className={`flex ${msg.sender === "me" ? "justify-end" : "justify-start"}`}
             >
-              <div
-                className={`max-w-[85%] md:max-w-[70%] px-5 py-3 rounded-2xl text-[15px] leading-relaxed shadow-2xl transition-all
-                  ${
-                    isMine
-                      ? "bg-[#ed9e6f] text-[#0c111f] font-medium rounded-tr-none shadow-[#ed9e6f]/10"
-                      : "bg-[#2d1f44]/60 backdrop-blur-lg border border-white/10 text-white rounded-tl-none"
-                  }
-                `}
-              >
+              <div className={`max-w-[85%] px-4 py-2.5 rounded-2xl text-[15px] shadow-xl ${msg.sender === "me"
+                ? "bg-[#ed9e6f] text-[#0c111f] rounded-tr-none"
+                : "bg-[#2d1f44]/80 border border-white/10 text-white rounded-tl-none"
+                }`}>
                 {msg.text}
               </div>
             </motion.div>
           ))}
         </AnimatePresence>
 
-        {/* 💡 STABLE TYPING INDICATOR CONTAINER */}
-        <div className="min-h-[40px] flex items-center">
-          <div
-            className={`transition-all duration-300 ease-in-out ${
-              isTyping ? "opacity-100 translate-y-0" : "opacity-0 translate-y-2 pointer-events-none"
-            }`}
-          >
-            <div className="px-4 py-3 rounded-2xl bg-white/5 backdrop-blur-sm border border-white/5 flex gap-1.5">
-              <span className="w-1.5 h-1.5 bg-[#80466e] rounded-full animate-bounce" />
-              <span className="w-1.5 h-1.5 bg-[#80466e] rounded-full animate-bounce [animation-delay:0.2s]" />
-              <span className="w-1.5 h-1.5 bg-[#80466e] rounded-full animate-bounce [animation-delay:0.4s]" />
-            </div>
-          </div>
-        </div>
-
-        <div ref={bottomRef} />
+        {/* Smoother Typing Indicator */}
+        <AnimatePresence>
+          {isTyping && (
+            <motion.div
+              initial={{ opacity: 0, y: 5, scale: 0.8 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.8 }}
+              transition={{ duration: 0.2 }}
+              className="flex justify-start"
+            >
+              <div className="px-4 py-3 rounded-2xl bg-white/5 border border-white/5 flex gap-1.5 items-center">
+                {[0, 0.2, 0.4].map((delay) => (
+                  <motion.span
+                    key={delay}
+                    animate={{ opacity: [0.3, 1, 0.3] }}
+                    transition={{
+                      duration: 1.2,
+                      repeat: Infinity,
+                      delay: delay,
+                      ease: "easeInOut"
+                    }}
+                    className="w-1.5 h-1.5 bg-[#ed9e6f] rounded-full"
+                  />
+                ))}
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
 
       {/* Input */}
+      {/* --- Modified Input Area --- */}
       <div className="p-4 pb-8 flex-none bg-[#0c111f]">
-        <motion.div layout className="flex gap-2 items-center bg-[#2d1f44]/90 border border-white/10 rounded-full p-1.5 shadow-2xl">
+        <motion.div
+          layout
+          className={`flex gap-2 items-center bg-[#2d1f44]/90 border border-white/10 rounded-full p-1.5 shadow-2xl ${isExpired ? "opacity-50 pointer-events-none" : ""}`}
+        >
           <input
+            disabled={isExpired} // ⭐ Block typing when time is up
             value={input}
-            onChange={(e) => {
-              setInput(e.target.value);
-
-              typingChannelRef.current?.send({
-                type: "broadcast",
-                event: "typing",
-                payload: {
-                  sender_id: user.id,
-                  isTyping: true,
-                },
-              });
-            }}
-            onKeyDown={(e) => e.key === "Enter" && sendMessage()}
-            placeholder="Whisper to the stars..."
+            onChange={handleInputChange}
+            onKeyDown={(e) => e.key === "Enter" && !isExpired && sendMessage()}
+            placeholder={isExpired ? "The stars have faded..." : "Whisper to the stars..."}
             className="flex-1 bg-transparent px-5 py-2 text-sm outline-none placeholder:text-white/20"
           />
           <button
+            disabled={isExpired}
             onClick={sendMessage}
-            className="bg-[#ed9e6f] text-[#0c111f] p-2.5 rounded-full active:scale-90 transition-all"
+            className="bg-[#ed9e6f] text-[#0c111f] p-2.5 rounded-full active:scale-90 transition-all disabled:grayscale"
           >
             <svg viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5">
               <path d="M3.478 2.405a.75.75 0 00-.926.94l2.432 7.905H13.5a.75.75 0 010 1.5H4.984l-2.432 7.905a.75.75 0 00.926.94 60.519 60.519 0 0018.445-8.986.75.75 0 000-1.218A60.517 60.517 0 003.478 2.405z" />
@@ -344,6 +449,55 @@ export default function Chat() {
           </button>
         </motion.div>
       </div>
+      <AnimatePresence>
+        {isExpired && myRevealChoice === null && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            className="absolute inset-0 z-50 flex items-center justify-center bg-[#0c111f]/95 backdrop-blur-2xl px-6 text-center"
+          >
+            <div className="max-w-xs">
+              <h2 className="text-2xl text-[#ed9e6f] font-bold mb-4" style={{ fontFamily: "Satisfy, cursive" }}>
+                A Final Choice
+              </h2>
+              <p className="text-white/60 text-sm mb-10 leading-relaxed">
+                Your time in the shadows is over. Will you reveal your true self?
+              </p>
+
+              <div className="flex flex-col gap-4">
+                {/* ⭐ Instagram Optional Field */}
+                <input
+                  type="text"
+                  onChange={(e) => setInstagramId(e.target.value.replace("@", ""))}
+                  placeholder="Instagram ID without @ (optional)"
+                  className="w-full bg-white/5 border border-white/10 text-white text-sm px-4 py-4 rounded-2xl outline-none placeholder:text-white/30"
+                />
+                <button
+                  onClick={() => handleRevealDecision('full')}
+                  className="w-full bg-[#ed9e6f] text-[#0c111f] font-bold py-4 rounded-2xl active:scale-95 transition-all"
+                >
+                  ✦ REVEAL WITH PHONE NUMBER
+                </button>
+                <button
+                  onClick={() => handleRevealDecision('name')}
+                  className="w-full bg-white/10 border border-white/20 text-[#ed9e6f] font-bold py-4 rounded-2xl active:scale-95 transition-all"
+                >
+                  ✦ REVEAL NAME ONLY
+                </button>
+
+
+
+                <button
+                  onClick={() => handleRevealDecision('deny')}
+                  className="w-full bg-white/5 border border-white/10 text-white/40 py-4 rounded-2xl active:scale-95 transition-all"
+                >
+                  STAY ANONYMOUS & EXIT
+                </button>
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

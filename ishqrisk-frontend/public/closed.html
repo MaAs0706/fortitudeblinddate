@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ISHQRISK | Thank You</title>
+  <style>
+    :root {
+      --bg: #080707;
+      --text: #f7e8ea;
+      --muted: #d9b8bf;
+      --card: rgba(255, 255, 255, 0.06);
+      --border: rgba(255, 255, 255, 0.14);
+      --accent: #d8a7b1;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+      color: var(--text);
+      background:
+        radial-gradient(circle at 50% 30%, rgba(216, 167, 177, 0.20) 0%, transparent 60%),
+        #080707;
+      display: grid;
+      place-items: center;
+      padding: 24px;
+    }
+
+    .container {
+      width: min(960px, 100%);
+    }
+
+    .hero {
+      text-align: center;
+      margin-bottom: 24px;
+      animation: fadeIn 700ms ease-out both;
+    }
+
+    .hero-logo {
+      width: min(260px, 65vw);
+      height: auto;
+      margin: 0 auto 14px;
+      display: block;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: clamp(1.8rem, 4vw, 3rem);
+      letter-spacing: 0.02em;
+    }
+
+    .subtitle {
+      color: var(--muted);
+      margin-top: 10px;
+      font-size: clamp(1rem, 2vw, 1.2rem);
+    }
+
+    .stats-grid {
+      display: grid;
+      gap: 14px;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      margin-top: 26px;
+      animation: fadeIn 1100ms ease-out both;
+    }
+
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 18px;
+      backdrop-filter: blur(2px);
+    }
+
+    .card-label {
+      color: var(--muted);
+      font-size: 0.9rem;
+      margin-bottom: 8px;
+    }
+
+    .card-value {
+      font-size: clamp(1.6rem, 3vw, 2.2rem);
+      font-weight: 700;
+      color: #fff;
+    }
+
+    .footer {
+      margin-top: 24px;
+      text-align: center;
+      color: var(--muted);
+      font-size: 0.95rem;
+      animation: fadeIn 1400ms ease-out both;
+    }
+
+    .pulse {
+      display: inline-block;
+      color: var(--accent);
+      animation: pulse 1200ms infinite ease-in-out;
+    }
+
+    @keyframes fadeIn {
+      from {
+        opacity: 0;
+        transform: translateY(10px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    @keyframes pulse {
+      0%, 100% { transform: scale(1); }
+      50% { transform: scale(1.15); }
+    }
+  </style>
+</head>
+<body>
+  <main class="container">
+    <section class="hero">
+      <img class="hero-logo" src="./icons/icon.svg" alt="ISHQRISK" />
+      <h1>Thank You, ISHQRISK Participants!</h1>
+      <p class="subtitle" id="dynamic-message">You made this journey meaningful.</p>
+    </section>
+
+    <section class="stats-grid">
+      <article class="card">
+        <div class="card-label">Number of Male Participants</div>
+        <div class="card-value" data-target="150">0</div>
+      </article>
+      <article class="card">
+        <div class="card-label">Number of Female Participants</div>
+        <div class="card-value" data-target="67">0</div>
+      </article>
+      <article class="card">
+        <div class="card-label">Total Matched Pairs</div>
+        <div class="card-value" data-target="56">0</div>
+      </article>
+      <article class="card">
+        <div class="card-label">Messages Sent/Delivered</div>
+        <div class="card-value" data-target="982">0</div>
+      </article>
+    </section>
+
+    <section class="footer">
+      <div>Built with gratitude for everyone who took a chance on connection <span class="pulse">♥</span></div>
+    </section>
+  </main>
+
+  <script>
+    const messages = [
+      "You made this journey meaningful.",
+      "Every profile, every message, every match mattered.",
+      "Thank you for making ISHQRISK a real story of connection."
+    ];
+
+    let messageIndex = 0;
+    const messageNode = document.getElementById("dynamic-message");
+    setInterval(() => {
+      messageIndex = (messageIndex + 1) % messages.length;
+      messageNode.textContent = messages[messageIndex];
+    }, 3200);
+
+    const animateCounter = (element, target) => {
+      const duration = 1200;
+      const startTime = performance.now();
+
+      const step = (now) => {
+        const progress = Math.min((now - startTime) / duration, 1);
+        const value = Math.floor(progress * target);
+        element.textContent = value.toLocaleString();
+        if (progress < 1) requestAnimationFrame(step);
+      };
+
+      requestAnimationFrame(step);
+    };
+
+    document.querySelectorAll("[data-target]").forEach((el) => {
+      animateCounter(el, Number(el.dataset.target));
+    });
+  </script>
+</body>
+</html>

@@ -48,6 +48,7 @@ const prepareUser = (profile) => {
 
     age_preference:
       profile.age_preference?.trim().toLowerCase() ?? "any",
+    opento: profile.opento?.trim().toLowerCase() ?? "open",
 
     approved: Boolean(profile.approved),
     ismatched: Boolean(profile.ismatched),
@@ -83,10 +84,11 @@ export const matchUsers = async (req, res) => {
           u.gender &&
           u.gender_preference &&
           u.age &&
-          u.year&&
+          u.year &&
           u.interests.length > 0
       );
-      for (const user of  users) {logger.info(user)}
+    // Just log a list of nicknames so you know who is in the pool
+    logger.info(`Eligible users: ${users.map(u => { return u.nickname || u.firstName }).join(", ")}`);
 
     logger.info(`Prepared ${users.length} users for matching`);
     if (users.length < 2) {
@@ -108,17 +110,21 @@ export const matchUsers = async (req, res) => {
     /* 4️⃣ Create fast lookup map (NO extra DB calls) */
     const userMap = new Map(users.map((u) => [u.id, u]));
 
-    /* 5️⃣ Insert Sessions + Update Users */
+
+
+    /* 5️⃣ Batch Insert Sessions & Update Users */
+    const sessionInserts = [];
+    const matchedUserIds = [];
+
     for (const match of matchedPairs) {
       const user1 = userMap.get(match.user1_id);
       const user2 = userMap.get(match.user2_id);
 
-      if (!user1 || !user2) {
-        logger.warn("User missing in lookup map");
-        continue;
-      }
+      if (!user1 || !user2) continue;
 
-      await supabase.from("sessions").insert({
+      matchedUserIds.push(user1.id, user2.id);
+
+      sessionInserts.push({
         id: uuidv4(),
         user_a: user1.id,
         user_b: user2.id,
@@ -127,23 +133,57 @@ export const matchUsers = async (req, res) => {
         message_count: 0,
         status: "active",
         start_time: new Date().toISOString(),
-        end_time: new Date(
-          Date.now() + 24 * 60 * 60 * 1000
-        ).toISOString(),
+        end_time: new Date(Date.now() + 15 * 60 * 60 * 1000).toISOString(),
       });
-
-      await supabase
-        .from("users")
-        .update({
-          onboarding_step: "matched",
-          ismatched: true,
-        })
-        .in("id", [user1.id, user2.id]);
-
-      logger.info(
-        `Session created for ${user1.nickname} & ${user2.nickname}`
-      );
     }
+
+    // Perform DB operations in parallel for speed
+    await Promise.all([
+      supabase.from("sessions").insert(sessionInserts),
+      supabase
+        .from("users") // Using "test" as per your controller's current code
+        .update({ onboarding_step: "matched", ismatched: true })
+        .in("id", matchedUserIds)
+    ]);
+
+
+
+    /* 5️⃣ Insert Sessions + Update Users */
+    // for (const match of matchedPairs) {
+    //   const user1 = userMap.get(match.user1_id);
+    //   const user2 = userMap.get(match.user2_id);
+
+    //   if (!user1 || !user2) {
+    //     logger.warn("User missing in lookup map");
+    //     continue;
+    //   }
+
+    //   await supabase.from("sessions").insert({
+    //     id: uuidv4(),
+    //     user_a: user1.id,
+    //     user_b: user2.id,
+    //     nickname_a: user1.nickname,
+    //     nickname_b: user2.nickname,
+    //     message_count: 0,
+    //     status: "active",
+    //     start_time: new Date().toISOString(),
+    //     end_time: new Date(
+    //       Date.now() + 5 * 60 * 60 * 1000
+    //     ).toISOString(),
+    //   });
+
+    //   await supabase
+    //     .from("users")
+    //     .update({
+    //       onboarding_step: "matched",
+    //       ismatched: true,
+    //     })
+    //     .in("id", [user1.id, user2.id]);
+
+    //   logger.info(
+    //     `Session created for ${user1.nickname} & ${user2.nickname}`
+    //   );
+    // }
 
     /* 6️⃣ Final Response */
     logger.info("Matchmaking finished successfully");
